@@ -1,0 +1,368 @@
+// 3D avatar Web App for Meta Ray-Ban Display (600x600 additive display, directional input).
+// Exported by the Meta Display Toolkit for Unity. Renders on the glasses with Three.js; optionally linked to the
+// Unity app on the phone through a WebSocket relay (GlassesWebAppLink).
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { CONFIG } from './config.js';
+
+const DEG = Math.PI / 180;
+const params = new URLSearchParams(location.search);
+const relayUrl = params.get('relay') ?? CONFIG.relayUrl;
+const room = params.get('room') ?? CONFIG.room;
+const $ = (id) => document.getElementById(id);
+
+// ───────────── Scene ─────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'low-power' });
+renderer.setPixelRatio(1);
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x000000, 1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+$('stage').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.05, 100);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x334455, 1.8));
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+keyLight.position.set(1.5, 3, 2.5);
+scene.add(keyLight);
+
+const holder = new THREE.Group(); // rotated by Left/Right and by the Unity app
+scene.add(holder);
+let yaw = 0, targetYaw = 0;
+let avatar = null;
+
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+});
+
+function frame(object) {
+  const box = new THREE.Box3().setFromObject(object);
+  const sphere = box.getBoundingSphere(new THREE.Sphere());
+  const distance = (sphere.radius * 1.15) / Math.sin((camera.fov / 2) * DEG);
+  camera.position.set(sphere.center.x, sphere.center.y, sphere.center.z + distance);
+  camera.near = Math.max(0.01, distance - sphere.radius * 2);
+  camera.far = distance + sphere.radius * 2;
+  camera.lookAt(sphere.center);
+  camera.updateProjectionMatrix();
+}
+
+// ───────────── Built-in robot (same as the Unity sample avatar) ─────────────
+function robotAvatar() {
+  const C = CONFIG.colors;
+  const mat = (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.45, metalness: 0 });
+  const capsule = new THREE.CapsuleGeometry(0.5, 1, 6, 16);
+  const sphere = new THREE.SphereGeometry(0.5, 24, 16);
+  const box = new THREE.BoxGeometry(1, 1, 1);
+  const cylinder = new THREE.CylinderGeometry(0.5, 0.5, 2, 12);
+  const part = (geometry, parent, pos, scale, color) => {
+    const mesh = new THREE.Mesh(geometry, mat(color));
+    mesh.position.set(...pos);
+    mesh.scale.set(...scale);
+    parent.add(mesh);
+    return mesh;
+  };
+  const group = (parent, pos) => {
+    const g = new THREE.Group();
+    g.position.set(...pos);
+    g.rotation.order = 'YXZ';
+    parent.add(g);
+    return g;
+  };
+
+  const root = new THREE.Group();
+  const rig = group(root, [0, 0, 0]);
+  part(capsule, rig, [0, 0.75, 0], [0.7, 0.55, 0.55], C.body);
+  const head = group(rig, [0, 1.42, 0]);
+  part(sphere, head, [0, 0.08, 0], [0.62, 0.58, 0.58], C.head);
+  const eyeL = part(sphere, head, [-0.12, 0.12, 0.27], [0.11, 0.13, 0.06], C.eye);
+  const eyeR = part(sphere, head, [0.12, 0.12, 0.27], [0.11, 0.13, 0.06], C.eye);
+  const mouth = part(box, head, [0, -0.06, 0.28], [0.16, 0.035, 0.03], C.mouth);
+  part(cylinder, head, [0, 0.42, 0], [0.03, 0.08, 0.03], C.head);
+  const tip = part(sphere, head, [0, 0.53, 0], [0.09, 0.09, 0.09], C.accent);
+  const armL = group(rig, [-0.42, 1.05, 0]);
+  part(capsule, armL, [0, -0.25, 0], [0.14, 0.25, 0.14], C.body);
+  const armR = group(rig, [0.42, 1.05, 0]);
+  part(capsule, armR, [0, -0.25, 0], [0.14, 0.25, 0.14], C.body);
+
+  const DURATION = { idle: 2.4, wave: 1.8, talk: 0.6, happy: 1.2, think: 2, nod: 1.2, listen: 1.6, spin: 1.6 };
+  const LOOP = new Set(['idle', 'talk', 'listen']);
+  const ease = (x) => x * x * (3 - 2 * x);
+  const clamp01 = (x) => Math.min(1, Math.max(0, x));
+  let action = 'idle', start = 0, until = 0, now = 0;
+  const look = { yaw: 0, pitch: 0, targetYaw: 0, targetPitch: 0 };
+
+  function evaluate(name, t, blink) {
+    const wave = Math.sin(t * Math.PI * 2);
+    let rigY = 0, rigYaw = 0, hx = -look.pitch, hy = look.yaw, hz = 0;
+    let aL = -10, aR = 10, aRx = 0, mouthOpen = 0, pulse = 0;
+    switch (name) {
+      case 'idle': rigY = 0.02 * wave; hz += 3 * wave; break;
+      case 'wave': {
+        const up = ease(clamp01(t * 5)) * (1 - ease(clamp01((t - 0.8) * 5)));
+        aR = 10 + 140 * up + 22 * Math.sin(t * Math.PI * 8) * up; hz -= 8 * up; mouthOpen = 0.6 * up; break;
+      }
+      case 'talk': mouthOpen = Math.abs(Math.sin(t * Math.PI * 2)); hx += 3 * wave; break;
+      case 'happy': {
+        const jump = Math.sin(Math.PI * t);
+        rigY = 0.28 * jump; aL = -(10 + 140 * jump); aR = 10 + 140 * jump; mouthOpen = 0.8; break;
+      }
+      case 'think': {
+        const k = ease(clamp01(t * 4)) * (1 - ease(clamp01((t - 0.85) * 6.6)));
+        hz += 14 * k; hx -= 8 * k; aR = 10 - 40 * k; aRx = -110 * k;
+        pulse = 0.5 * k * (0.5 + 0.5 * Math.sin(t * Math.PI * 8)); break;
+      }
+      case 'nod': hx += 16 * Math.sin(t * Math.PI * 4) * (1 - t); break;
+      case 'listen': hz += 10; pulse = 0.5 + 0.5 * Math.sin(t * Math.PI * 4); break;
+      case 'spin': rigYaw = 360 * ease(t); break;
+    }
+    rig.position.y = rigY;
+    rig.rotation.set(0, rigYaw * DEG, 0);
+    head.rotation.set(hx * DEG, hy * DEG, hz * DEG);
+    armL.rotation.set(0, 0, aL * DEG);
+    armR.rotation.set(aRx * DEG, 0, aR * DEG);
+    mouth.scale.y = 0.035 * (1 + 3.5 * mouthOpen);
+    tip.scale.setScalar(0.09 * (1 + 0.5 * pulse));
+    const eyeY = blink ? 0.13 * 0.12 : 0.13;
+    eyeL.scale.y = eyeY;
+    eyeR.scale.y = eyeY;
+  }
+
+  return {
+    object: root,
+    actions: Object.keys(DURATION),
+    play(name, seconds = 0) {
+      if (!(name in DURATION)) return false;
+      action = name; start = now; until = seconds > 0 ? now + seconds : 0;
+      return true;
+    },
+    setLook(y, p) {
+      look.targetYaw = Math.max(-40, Math.min(40, y));
+      look.targetPitch = Math.max(-25, Math.min(25, p));
+    },
+    update(dt, time) {
+      now = time;
+      let t = (now - start) / DURATION[action];
+      const loop = LOOP.has(action);
+      if ((!loop && t >= 1) || (until > 0 && now >= until)) { this.play(CONFIG.idleAction in DURATION ? CONFIG.idleAction : 'idle'); t = 0; }
+      const k = 1 - Math.exp(-8 * dt);
+      look.yaw += (look.targetYaw - look.yaw) * k;
+      look.pitch += (look.targetPitch - look.pitch) * k;
+      evaluate(action, loop ? t % 1 : clamp01(t), now % 3.7 < 0.12);
+    },
+  };
+}
+
+// ───────────── glTF model with animations ─────────────
+function gltfAvatar(gltf) {
+  const object = gltf.scene;
+  const mixer = new THREE.AnimationMixer(object);
+  const clips = gltf.animations || [];
+  const find = (name) => {
+    const n = name.toLowerCase();
+    return clips.find((c) => c.name.toLowerCase() === n) || clips.find((c) => c.name.toLowerCase().includes(n));
+  };
+  let head = null;
+  object.traverse((o) => { if (!head && o.isBone && /head/i.test(o.name)) head = o; });
+  let current = null, until = 0, now = 0;
+  const look = { yaw: 0, pitch: 0, targetYaw: 0, targetPitch: 0 };
+  const api = {
+    object,
+    actions: clips.map((c) => c.name),
+    play(name, seconds = 0) {
+      const clip = find(name);
+      if (!clip) return false;
+      const next = mixer.clipAction(clip);
+      const loop = CONFIG.loopActions.some((a) => clip.name.toLowerCase().includes(a));
+      next.reset();
+      next.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity);
+      next.clampWhenFinished = !loop;
+      if (current && current !== next) next.crossFadeFrom(current, 0.25, false);
+      next.play();
+      current = next;
+      until = seconds > 0 ? now + seconds : 0;
+      return true;
+    },
+    setLook(y, p) {
+      look.targetYaw = Math.max(-40, Math.min(40, y));
+      look.targetPitch = Math.max(-25, Math.min(25, p));
+    },
+    update(dt, time) {
+      now = time;
+      if (until > 0 && now >= until) { until = 0; api.play(CONFIG.idleAction); }
+      mixer.update(dt);
+      const k = 1 - Math.exp(-8 * dt);
+      look.yaw += (look.targetYaw - look.yaw) * k;
+      look.pitch += (look.targetPitch - look.pitch) * k;
+      if (head) { head.rotation.y += look.yaw * DEG; head.rotation.x += -look.pitch * DEG; }
+    },
+  };
+  mixer.addEventListener('finished', (e) => { if (e.action === current) api.play(CONFIG.idleAction); });
+  return api;
+}
+
+// ───────────── Caption, action chip, status ─────────────
+let captionTimer = 0, chipTimer = 0;
+function say(text, seconds = 4) {
+  $('caption').textContent = text || '';
+  $('caption').classList.toggle('show', !!text);
+  clearTimeout(captionTimer);
+  if (text && seconds > 0) captionTimer = setTimeout(() => $('caption').classList.remove('show'), seconds * 1000);
+}
+function chip(text) {
+  $('chip').textContent = text;
+  $('chip').classList.add('show');
+  clearTimeout(chipTimer);
+  chipTimer = setTimeout(() => $('chip').classList.remove('show'), 1800);
+}
+function status(text) { $('status').textContent = text; }
+
+// ───────────── Actions and input (touchpad / Neural Band arrive as arrow keys and Enter) ─────────────
+let actions = [];
+let selected = 0;
+
+function play(name, seconds = 0, fromUnity = false) {
+  if (!avatar || !avatar.play(name, seconds)) return false;
+  if (!fromUnity) send({ type: 'action', name });
+  return true;
+}
+
+function rotate(degrees) { targetYaw += degrees; }
+
+addEventListener('keydown', (e) => {
+  // Escape / system Back are left to the system.
+  switch (e.key) {
+    case 'ArrowLeft': rotate(-CONFIG.rotateStep); break;
+    case 'ArrowRight': rotate(CONFIG.rotateStep); break;
+    case 'ArrowUp':
+    case 'ArrowDown':
+      if (!actions.length) return;
+      selected = (selected + (e.key === 'ArrowDown' ? 1 : actions.length - 1)) % actions.length;
+      chip('◆ ' + actions[selected]);
+      break;
+    case 'Enter':
+    case ' ':
+      requestOrientation();
+      if (actions.length) play(actions[selected]);
+      break;
+    default: return;
+  }
+  e.preventDefault();
+  send({ type: 'input', key: e.key });
+});
+
+// ───────────── Head orientation (the avatar looks where the wearer turns) ─────────────
+let reference = null, orientationAsked = false;
+function requestOrientation() {
+  if (orientationAsked || !CONFIG.followHead) return;
+  orientationAsked = true;
+  const D = window.DeviceOrientationEvent;
+  if (D && typeof D.requestPermission === 'function') D.requestPermission().catch(() => {});
+}
+if (CONFIG.followHead && 'DeviceOrientationEvent' in window) {
+  addEventListener('deviceorientation', (e) => {
+    if (e.alpha == null || !avatar) return;
+    if (!reference) reference = { alpha: e.alpha, beta: e.beta };
+    const wrap = (a) => ((a + 540) % 360) - 180;
+    avatar.setLook(wrap(e.alpha - reference.alpha), wrap(e.beta - reference.beta));
+  });
+}
+
+// ───────────── Voice: Meta AI can call these tools while the app is open (WebMCP) ─────────────
+async function registerTools() {
+  const mc = document.modelContext;
+  if (!mc || typeof mc.registerTool !== 'function') return;
+  try {
+    await mc.registerTool({
+      name: 'avatar_play_action',
+      description: 'Makes the 3D avatar on screen perform an action, such as waving, dancing or nodding.',
+      inputSchema: {
+        type: 'object',
+        properties: { action: { type: 'string', enum: actions, description: 'The action to perform.' } },
+        required: ['action'],
+      },
+      async execute(input) {
+        const name = String(input?.action ?? '');
+        const ok = actions.includes(name) && play(name);
+        return { content: [{ type: 'text', text: ok ? `The avatar does: ${name}.` : 'The avatar does not know that action.' }] };
+      },
+    });
+    await mc.registerTool({
+      name: 'avatar_say',
+      description: 'Shows a short sentence below the avatar, as if it were speaking.',
+      inputSchema: { type: 'object', properties: { text: { type: 'string', description: 'What the avatar says (one short sentence).' } }, required: ['text'] },
+      async execute(input) {
+        const text = String(input?.text ?? '').slice(0, 140);
+        say(text, 5);
+        play('talk', 2);
+        return { content: [{ type: 'text', text: 'Shown.' }] };
+      },
+    });
+  } catch (err) {
+    console.warn('WebMCP tools not registered', err);
+  }
+}
+
+// ───────────── Link with the Unity app (optional) ─────────────
+let socket = null, backoff = 1;
+function send(message) {
+  if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+}
+function connect() {
+  if (!relayUrl) { status(''); return; }
+  const url = relayUrl + (relayUrl.includes('?') ? '&' : '?') + 'room=' + encodeURIComponent(room) + '&role=glasses';
+  socket = new WebSocket(url);
+  socket.onopen = () => { backoff = 1; status('● linked'); send({ type: 'hello', from: 'glasses', actions }); };
+  socket.onclose = () => { status('○ relay offline'); setTimeout(connect, backoff * 1000); backoff = Math.min(backoff * 2, 15); };
+  socket.onerror = () => socket.close();
+  socket.onmessage = (event) => {
+    let m;
+    try { m = JSON.parse(event.data); } catch { return; }
+    if (!m || typeof m.type !== 'string') return;
+    switch (m.type) {
+      case 'play': play(String(m.name ?? ''), 0, true); break;
+      case 'say': say(String(m.text ?? '').slice(0, 280), Number(m.seconds) || 4); break;
+      case 'rotate': rotate(Number(m.degrees) || 0); break;
+      case 'look': avatar?.setLook(Number(m.yaw) || 0, Number(m.pitch) || 0); break;
+      case 'hello': if (m.from === 'unity') send({ type: 'hello', from: 'glasses', actions }); break;
+    }
+  };
+}
+addEventListener('pagehide', () => send({ type: 'bye', from: 'glasses' }));
+
+// ───────────── Start ─────────────
+async function start() {
+  if (CONFIG.modelUrl) {
+    try {
+      avatar = gltfAvatar(await new GLTFLoader().loadAsync(CONFIG.modelUrl));
+    } catch (err) {
+      console.warn('Could not load the model, using the built-in robot', err);
+    }
+  }
+  if (!avatar) avatar = robotAvatar();
+  holder.add(avatar.object);
+  frame(avatar.object);
+  actions = (CONFIG.actions && CONFIG.actions.length ? CONFIG.actions : avatar.actions).filter((a) => a);
+  selected = Math.max(0, actions.indexOf('wave'));
+  avatar.play(CONFIG.idleAction);
+  $('stage').focus();
+  registerTools();
+  connect();
+
+  const clock = new THREE.Clock();
+  let accumulated = 0, time = 0;
+  renderer.setAnimationLoop(() => {
+    const dt = Math.min(clock.getDelta(), 0.1);
+    accumulated += dt;
+    if (accumulated < 1 / CONFIG.maxFps) return;
+    const step = accumulated;
+    accumulated = 0;
+    time += step;
+    yaw += (targetYaw - yaw) * (1 - Math.exp(-10 * step));
+    holder.rotation.y = yaw * DEG;
+    avatar.update(step, time);
+    renderer.render(scene, camera);
+  });
+}
+start();

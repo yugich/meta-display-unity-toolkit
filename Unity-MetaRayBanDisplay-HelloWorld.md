@@ -22,7 +22,7 @@ What you need to understand before starting:
 | Official Unity SDK | **There is none.** DAT only has native Android (Kotlin) and iOS (Swift) SDKs. The Meta XR/OpenXR Unity packages are for Quest and do not work with the Ray-Ban Display. |
 | Where the app runs | **On the phone.** The app sends a ready-made interface to the glasses over Bluetooth, through the Meta AI app. The glasses keep no app state. |
 | What appears on the glasses | **Declarative UI:** `flexBox`, `text`, `image`, `button`, `icon` and `video` (MP4 by URL). **600×600** screen. |
-| Does the Unity 3D scene appear on the glasses? | **Not directly.** There is no API to send pixels or frames in real time. You can send **snapshots** (render to texture → PNG → `image(bitmap)`), but with Bluetooth latency. It is not suitable for real-time games. |
+| Does the Unity 3D scene appear on the glasses? | **Not directly.** There is no API to stream pixels in real time. You can send **rendered frames** as images (render to texture → JPEG → `image`), a few per second over Bluetooth, or MP4 clips; smooth real-time 3D needs a **Three.js Web App** on the glasses. See section 11. |
 | Glasses input | Taps on the touchpad or the Neural Band reach the phone as `onClick` callbacks. |
 
 **When Unity makes sense:** you already have a Unity app or game on the phone and want a HUD or "second screen" on the glasses: scoreboard, notifications, instructions, snapshots.
@@ -873,7 +873,37 @@ Another sample in the repository, **BirdSpotter**, is a "real" app extended to t
 
 ---
 
-## 11. Next steps
+## 11. 3D objects and avatars on the display
+
+The display has **no 3D API**. DAT only draws declarative screens (text, image, button, icon, video), so a 3D object
+(for example an avatar to talk to) has to reach the glasses in one of these ways:
+
+| Way | What travels | Good for | Limits |
+|---|---|---|---|
+| **Rendered frames** | A Unity camera renders the object; each frame is an `image` node | Anything interactive | Each send replaces the whole screen and goes over Bluetooth: expect a few frames per second, not 30 |
+| **Pre-rendered frames** | Each action rendered once, played as a flipbook | Expressions, short gestures | Same link cost per frame, no rotation |
+| **MP4 clips** | `VideoPlayer(VideoSource.Url(...))` | Smooth animations | HTTPS URL only (no local file or stream in 1.0.1), ≤ 400 px per side and 70,000 px, full screen |
+| **Web App** | Nothing: Three.js renders on the glasses | Smooth, real-time 3D | Separate app on the glasses, not Unity: the model goes as glTF/GLB, commands go through a server |
+
+Two details found while studying the SDK (`mwdat-display` 1.0.1):
+
+- An image given as a `Bitmap` is encoded **by the SDK** as a base64 `data:` URI inside the layout: JPEG quality 85,
+  or PNG when the bitmap has transparency (much larger). An opaque bitmap, or a JPEG `data:` URI passed directly as
+  the image `uri`, keeps frames small.
+- Meta publishes an AI coding plugin for **Web App games** with Vite, TypeScript and **Three.js**, including 3D with a
+  perspective camera and model loading, for the 600×600 additive display with directional input. Web Apps also read
+  `DeviceOrientationEvent` (head orientation) and can expose voice tools to Meta AI (WebMCP).
+
+The toolkit in this repository implements all four ways behind one component (`Glasses3DView`), with live metrics to
+compare them on your glasses, a robot avatar sample, an MP4 recorder and a Web App exporter. See section 5 of its
+[manual](MetaDisplayToolkit/Assets/MetaDisplayToolkit/README.md).
+
+Design tips for the additive display: keep the background black, light the object **from the front**, and use bright
+colors. Dark parts of the model look transparent.
+
+---
+
+## 12. Next steps
 
 - **Inputs, voice and sensors:** DAT also offers navigation events, speech recognition, audio and IMU. Same pattern: expose them in the bridge and send events to C#.
 - **Video:** create `VideoPlayer(VideoSource.Url(...), VideoCodec.MP4)`, send it as the root with `sendContent { video(player) }` and call `play()` when the send succeeds.
@@ -891,6 +921,8 @@ Another sample in the repository, **BirdSpotter**, is a "real" app extended to t
 - [Version Dependencies](https://wearables.developer.meta.com/docs/develop/dat/version-dependencies)
 - [DAT overview](https://wearables.developer.meta.com/docs/develop/dat/build-overview)
 - [Camera streaming (resolution, fps, Bluetooth Classic)](https://wearables.developer.meta.com/docs/develop/dat/streaming)
+- [Web Apps: testing and the Meta Ray-Ban Display Simulator](https://wearables.developer.meta.com/docs/develop/webapps/test/)
+- [Web Apps: setup and hosting](https://wearables.developer.meta.com/docs/develop/webapps/setup/)
 - [Camera frame processing (HEVC, stabilization)](https://wearables.developer.meta.com/docs/develop/dat/camera-stream-processing)
 - [Microphones and speakers (HFP/A2DP)](https://wearables.developer.meta.com/docs/develop/dat/microphones-and-speakers)
 - [Motion (IMU)](https://wearables.developer.meta.com/docs/develop/dat/motion)

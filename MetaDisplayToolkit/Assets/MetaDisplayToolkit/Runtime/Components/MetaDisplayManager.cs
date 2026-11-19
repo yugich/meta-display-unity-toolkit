@@ -110,6 +110,8 @@ namespace MetaDisplay
             MetaEditorSimulation.Enabled = simulateInEditor;
             if (showPhoneDebugPanel && GetComponent<MetaPhoneDebugPanel>() == null) gameObject.AddComponent<MetaPhoneDebugPanel>();
             if (initializeOnStart) MetaWearables.Initialize();
+            // Scene loaded while already connected: show this scene's initial screen right away.
+            if (MetaGlassesDisplay.IsReady) OnDisplay(DisplayState.Started);
         }
 
         /// <summary>Connects to the glasses and requests the capabilities checked in the Inspector.</summary>

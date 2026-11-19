@@ -1,0 +1,23 @@
+// Web App settings, exported by Unity (Meta Display > 3D > Export Web App). Edit freely.
+export const CONFIG = {
+  title: '{{TITLE}}',
+
+  // WebSocket relay shared with the Unity app (GlassesWebAppLink). Empty = no link: the Web App works on its own.
+  // Can be overridden with ?relay=wss://...&room=... in the URL.
+  relayUrl: '{{RELAY_URL}}',
+  room: '{{ROOM}}',
+
+  // glTF/GLB model with animations (relative or HTTPS URL). Empty = built-in robot.
+  modelUrl: '{{MODEL_URL}}',
+  idleAction: '{{IDLE}}',
+
+  // Actions offered with Up/Down + Select and to the assistant (WebMCP). Empty = every animation of the model.
+  actions: {{ACTIONS}},
+  loopActions: ['idle', 'talk', 'listen'],
+
+  rotateStep: 30,       // degrees per Left/Right
+  followHead: true,     // the avatar looks where the wearer turns the head (DeviceOrientation)
+  maxFps: 30,           // render cap, to save battery
+
+  colors: { body: '#40ccff', head: '#f2f7ff', eye: '#2673ff', mouth: '#ff73a6', accent: '#ffd940' },
+};

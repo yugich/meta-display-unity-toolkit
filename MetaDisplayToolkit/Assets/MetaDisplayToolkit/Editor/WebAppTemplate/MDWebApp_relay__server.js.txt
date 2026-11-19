@@ -1,0 +1,40 @@
+// Minimal WebSocket relay for the Meta Display Toolkit: every text message is forwarded to the other clients
+// of the same room (?room=...). The Unity app (GlassesWebAppLink) and the Web App on the glasses join the same room.
+// Deploy it on any host with TLS (wss://). Use an unguessable room name and never send secrets through it.
+import http from 'node:http';
+import { WebSocketServer } from 'ws';
+
+const PORT = Number(process.env.PORT) || 8080;
+const MAX_CLIENTS_PER_ROOM = 8;
+const rooms = new Map();
+
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'content-type': 'text/plain' });
+  res.end('Meta Display relay is running\n');
+});
+
+const wss = new WebSocketServer({ server, maxPayload: 64 * 1024 });
+
+wss.on('connection', (ws, req) => {
+  const url = new URL(req.url ?? '/', 'http://localhost');
+  const room = (url.searchParams.get('room') || 'default').slice(0, 64);
+  const peers = rooms.get(room) ?? new Set();
+  if (peers.size >= MAX_CLIENTS_PER_ROOM) {
+    ws.close(1013, 'room full');
+    return;
+  }
+  peers.add(ws);
+  rooms.set(room, peers);
+
+  ws.on('message', (data, isBinary) => {
+    if (isBinary) return;
+    const text = data.toString();
+    for (const peer of peers) if (peer !== ws && peer.readyState === peer.OPEN) peer.send(text);
+  });
+  ws.on('close', () => {
+    peers.delete(ws);
+    if (peers.size === 0) rooms.delete(room);
+  });
+});
+
+server.listen(PORT, () => console.log(`Meta Display relay listening on port ${PORT}`));

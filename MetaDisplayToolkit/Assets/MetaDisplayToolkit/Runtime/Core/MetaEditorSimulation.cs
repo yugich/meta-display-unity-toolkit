@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Globalization;
 using UnityEngine;
 
@@ -15,6 +16,16 @@ namespace MetaDisplay
         public static bool Enabled = true;
         /// <summary>Starts as an app already registered in Meta AI (connects right away on Play).</summary>
         public static bool StartRegistered = true;
+
+        /// <summary>Simulated Bluetooth speed for screens sent to the glasses (bytes/s, 0 = instant).</summary>
+        public static float LinkBytesPerSecond;
+        /// <summary>Simulated latency added to each screen sent to the glasses.</summary>
+        public static float LinkLatencyMs;
+
+        struct Delayed { public float Due; public string Type, Json; }
+        static readonly List<Delayed> s_Delayed = new List<Delayed>();
+        static float s_LinkFreeAt;
+        static bool s_TickHooked;
 
         static bool s_Registered = true;
         static bool s_SessionStarted;
@@ -101,6 +112,15 @@ namespace MetaDisplay
                         Emit("display.sendFailed", "{\"requestId\":" + idJson + ",\"error\":\"NOT_READY\",\"message\":\"(Editor) Display is not ready\"}");
                         break;
                     }
+                    if (method == "sendLayout" && (LinkBytesPerSecond > 0 || LinkLatencyMs > 0))
+                    {
+                        int bytes = args.Length > 0 && args[0] is string layout ? layout.Length : 0;
+                        float now = Time.realtimeSinceStartup;
+                        float start = Mathf.Max(now, s_LinkFreeAt);
+                        s_LinkFreeAt = start + (LinkBytesPerSecond > 0 ? bytes / LinkBytesPerSecond : 0f);
+                        EmitLater(s_LinkFreeAt + LinkLatencyMs / 1000f, "display.sent", "{\"requestId\":" + idJson + "}");
+                        break;
+                    }
                     Emit("display.sent", "{\"requestId\":" + idJson + "}");
                     if (method == "playVideo") Emit("video.state", "{\"state\":\"PLAYING\"}");
                     break;
@@ -142,6 +162,28 @@ namespace MetaDisplay
             }
         }
 
+        static void EmitLater(float due, string type, string json)
+        {
+            if (!s_TickHooked)
+            {
+                s_TickHooked = true;
+                MetaDispatcher.Tick += FlushDelayed;
+            }
+            s_Delayed.Add(new Delayed { Due = due, Type = type, Json = json });
+        }
+
+        static void FlushDelayed()
+        {
+            if (s_Delayed.Count == 0) return;
+            float now = Time.realtimeSinceStartup;
+            for (int i = 0; i < s_Delayed.Count; i++)
+            {
+                if (s_Delayed[i].Due > now) continue;
+                Emit(s_Delayed[i].Type, s_Delayed[i].Json);
+                s_Delayed.RemoveAt(i--);
+            }
+        }
+
         static void EmitDisplayStarted()
         {
             Emit("display.state", "{\"state\":\"STARTING\"}");
@@ -165,6 +207,12 @@ namespace MetaDisplay
             s_SessionStarted = false;
             s_DisplayWanted = false;
             Enabled = true;
+            LinkBytesPerSecond = 0;
+            LinkLatencyMs = 0;
+            s_Delayed.Clear();
+            s_LinkFreeAt = 0;
+            if (s_TickHooked) MetaDispatcher.Tick -= FlushDelayed;
+            s_TickHooked = false;
         }
     }
 }

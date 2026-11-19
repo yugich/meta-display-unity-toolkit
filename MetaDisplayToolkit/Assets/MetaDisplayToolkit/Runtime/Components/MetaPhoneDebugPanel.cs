@@ -24,7 +24,11 @@ namespace MetaDisplay
         Texture2D m_Photo;
         string m_LastInput = "-", m_LastSpeech = "-";
 
-        static readonly string[] Tabs = { "Connection", "Glasses", "Camera", "Sensors", "Mock" };
+        static readonly string[] Tabs = { "Connection", "Glasses", "3D", "Camera", "Sensors", "Mock" };
+        static readonly string[] Strategies = { "Live frames", "Baked frames", "Video clips", "Web App" };
+        static readonly int[] Resolutions = { 150, 200, 300, 400, 600 };
+        static readonly int[] Qualities = { 30, 50, 70, 90 };
+        static readonly float[] FpsLimits = { 2, 5, 10, 20 };
 
         void Awake() => m_Open = !startCollapsed;
 
@@ -112,9 +116,10 @@ namespace MetaDisplay
             {
                 case 0: ConnectionTab(); break;
                 case 1: GlassesTab(); break;
-                case 2: CameraTab(); break;
-                case 3: SensorsTab(); break;
-                case 4: MockTab(); break;
+                case 2: ThreeDTab(); break;
+                case 3: CameraTab(); break;
+                case 4: SensorsTab(); break;
+                case 5: MockTab(); break;
             }
             GUILayout.Space(m_Unit * 0.5f);
             GUILayout.Label("<b>Log</b>", m_Label);
@@ -193,6 +198,111 @@ namespace MetaDisplay
             if (Btn("Sample video (MP4)"))
                 MetaGlassesDisplay.PlayVideo("https://github.com/facebook/meta-wearables-dat-android/raw/refs/heads/assets/video_266x150_faststart.mp4");
             GUILayout.Label("Video: " + MetaGlassesDisplay.Video, m_Small);
+        }
+
+        static string[] Labels<T>(T[] values)
+        {
+            var labels = new string[values.Length];
+            for (int i = 0; i < values.Length; i++) labels[i] = values[i].ToString();
+            return labels;
+        }
+
+        int Pick<T>(T[] values, T current) => GUILayout.Toolbar(System.Array.IndexOf(values, current), Labels(values), m_Button);
+
+        void ThreeDTab()
+        {
+            var view = Glasses3DView.All.Count > 0 ? Glasses3DView.All[0] : null;
+            if (view == null)
+            {
+                GUILayout.Label("No Glasses 3D View in this scene. In the Editor: Meta Display > 3D > Create Avatar Sample Scene.", m_Small);
+                return;
+            }
+            GUILayout.Label("<b>How the 3D object reaches the glasses</b>", m_Label);
+            int strategy = GUILayout.SelectionGrid((int)view.strategy, Strategies, 2, m_Button);
+            if (strategy != (int)view.strategy) view.SetStrategy((Glasses3DStrategy)strategy);
+
+            var m = view.Metrics;
+            GUILayout.Label($"<b>{m.Fps:0.0} fps</b> · latency {m.LastLatencyMs:0} ms (avg {m.AvgLatencyMs:0}) · {m.LastBytes / 1024f:0.0} KB/frame\n" +
+                            $"capture {m.CaptureMs:0.0} ms · sent {m.FramesSent} · skipped {m.FramesSkipped} · failed {m.FramesFailed} · action '{view.CurrentAction}'", m_Small);
+            GUILayout.BeginHorizontal();
+            if (view.IsShowing)
+            {
+                if (Btn("Stop sending")) view.Hide();
+            }
+            else if (Btn("Show on the glasses")) view.Show();
+            if (Btn("Reset metrics")) view.ResetMetrics();
+            GUILayout.EndHorizontal();
+
+            if (view.Preview != null)
+            {
+                float side = m_Unit * 8;
+                var rect = GUILayoutUtility.GetRect(side, side, GUILayout.ExpandWidth(false));
+                GUI.DrawTexture(rect, view.Preview, ScaleMode.ScaleToFit);
+            }
+
+            GUILayout.Label("<b>Actions</b>", m_Label);
+            var actions = view.Actions;
+            for (int i = 0; i < actions.Count; i += 3)
+            {
+                GUILayout.BeginHorizontal();
+                for (int j = i; j < Mathf.Min(i + 3, actions.Count); j++)
+                    if (Btn(actions[j])) view.Play(actions[j]);
+                GUILayout.EndHorizontal();
+            }
+            GUILayout.BeginHorizontal();
+            if (Btn("⟲ Rotate")) view.Rotate(-30);
+            if (Btn("Rotate ⟳")) view.Rotate(30);
+            if (Btn("Say hello")) view.Say("Hello from the phone!", 4f);
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            if (Btn("Speech: " + MetaSpeech.State)) MetaSpeech.Start();
+            if (Btn("Inputs: " + MetaInputs.State)) MetaInputs.Start(false);
+            GUILayout.EndHorizontal();
+
+            switch (view.strategy)
+            {
+                case Glasses3DStrategy.LiveFrames:
+                case Glasses3DStrategy.BakedFrames:
+                {
+                    bool changed = false;
+                    GUILayout.Label("Image size (px)", m_Small);
+                    int r = Pick(Resolutions, view.resolution);
+                    if (r >= 0 && Resolutions[r] != view.resolution) { view.resolution = Resolutions[r]; changed = true; }
+                    GUILayout.Label("JPEG quality", m_Small);
+                    int q = Pick(Qualities, view.jpegQuality);
+                    if (q >= 0 && Qualities[q] != view.jpegQuality) { view.jpegQuality = Qualities[q]; changed = true; }
+                    GUILayout.Label("Max frames per second", m_Small);
+                    int f = Pick(FpsLimits, view.maxFps);
+                    if (f >= 0 && !Mathf.Approximately(FpsLimits[f], view.maxFps)) { view.maxFps = FpsLimits[f]; changed = true; }
+                    GUILayout.Label("Encoding", m_Small);
+                    int e = GUILayout.Toolbar((int)view.encoding, new[] { "Direct JPEG", "SDK bitmap" }, m_Button);
+                    if (e != (int)view.encoding) { view.encoding = (Glasses3DEncoding)e; changed = true; }
+                    if (view.strategy == Glasses3DStrategy.LiveFrames)
+                    {
+                        GUILayout.Label("Send", m_Small);
+                        int u = GUILayout.Toolbar((int)view.updateMode, new[] { "Always", "On change", "Manual" }, m_Button);
+                        if (u != (int)view.updateMode) { view.updateMode = (Glasses3DUpdateMode)u; changed = true; }
+                        if (view.updateMode == Glasses3DUpdateMode.Manual && Btn("Send one frame")) view.SendFrameNow();
+                    }
+                    else if (Btn(view.IsBaking ? $"Baking… {view.BakeProgress:P0}" : "Bake again")) view.Bake();
+                    if (changed) view.ApplySettings();
+                    break;
+                }
+                case Glasses3DStrategy.VideoClips:
+                    GUILayout.Label(string.IsNullOrEmpty(view.videoBaseUrl)
+                        ? "Set Video base URL (HTTPS folder with <action>.mp4). Record the clips in the Editor: Meta Display > 3D > Record MP4 Clips."
+                        : "Clips: " + view.videoBaseUrl + "/<action>.mp4 · video " + MetaGlassesDisplay.Video, m_Small);
+                    break;
+                case Glasses3DStrategy.WebApp:
+                {
+                    var link = view.webAppLink;
+                    GUILayout.Label(link == null ? "Add a Glasses Web App Link to the view." :
+                        $"Relay: {(string.IsNullOrEmpty(link.relayUrl) ? "(not set)" : link.relayUrl)} · room '{link.room}'\n{link.Status}" +
+                        (link.WebAppOnline ? " · the Web App is open on the glasses" : ""), m_Small);
+                    GUILayout.Label("Open the Web App from the glasses app grid (export it in the Editor: Meta Display > 3D > Export Web App).", m_Small);
+                    break;
+                }
+            }
         }
 
         void CameraTab()
