@@ -1,40 +1,40 @@
-# Meta Display Toolkit para Unity
+# Meta Display Toolkit for Unity
 
-Toolkit para criar apps **Unity (Android)** para o **Meta Ray-Ban Display** usando o
-**Meta Wearables Device Access Toolkit (DAT) 1.0.1**, com a UI dos óculos desenhada no **Canvas** do Unity.
+Toolkit for building **Unity (Android)** apps for the **Meta Ray-Ban Display** with the
+**Meta Wearables Device Access Toolkit (DAT) 1.0.1**, with the glasses UI drawn on the Unity **Canvas**.
 
 ## Downloads (Releases)
 
-Na página de **Releases** deste repositório:
+On this repository's **Releases** page:
 
-| Arquivo | Para quê |
+| File | Purpose |
 |---|---|
-| `MetaDisplayToolkit.unitypackage` | Importar no Unity (Assets → Import Package → Custom Package…) |
-| `MetaDisplayDemo.apk` | Cena de exemplo pronta para testar nos óculos: `adb install -r MetaDisplayDemo.apk` |
+| `MetaDisplayToolkit.unitypackage` | Import into Unity (Assets → Import Package → Custom Package…) |
+| `MetaDisplayDemo.apk` | Sample scene ready to test on the glasses: `adb install -r MetaDisplayDemo.apk` |
 
-## O que tem aqui
+## What's here
 
-| Caminho | Conteúdo |
+| Path | Contents |
 |---|---|
-| [`MetaDisplayToolkit/Assets/MetaDisplayToolkit/`](MetaDisplayToolkit/Assets/MetaDisplayToolkit/) | Código do pacote Unity (C#, Editor, shader e a ponte `.aar`). Manual: [LEIAME.md](MetaDisplayToolkit/Assets/MetaDisplayToolkit/LEIAME.md) |
-| [`MetaDisplayToolkit/android-bridge/`](MetaDisplayToolkit/android-bridge/) | Projeto Gradle da ponte Kotlin (Unity ↔ SDK da Meta) |
-| [`MetaDisplayToolkit/tools/unity-tests/`](MetaDisplayToolkit/tools/unity-tests/) | Scripts usados para validar o pacote (build do APK, exportação, teste PlayMode) |
-| [`Unity-MetaRayBanDisplay-HelloWorld.md`](Unity-MetaRayBanDisplay-HelloWorld.md) | Guia de estudo: como Unity, Android e o display dos óculos se conectam |
+| [`MetaDisplayToolkit/Assets/MetaDisplayToolkit/`](MetaDisplayToolkit/Assets/MetaDisplayToolkit/) | Unity package source (C#, Editor, shader and the `.aar` bridge). Manual: [README.md](MetaDisplayToolkit/Assets/MetaDisplayToolkit/README.md) |
+| [`MetaDisplayToolkit/android-bridge/`](MetaDisplayToolkit/android-bridge/) | Gradle project of the Kotlin bridge (Unity ↔ Meta SDK) |
+| [`MetaDisplayToolkit/tools/unity-tests/`](MetaDisplayToolkit/tools/unity-tests/) | Scripts used to validate the package (APK build, export, PlayMode test) |
+| [`Unity-MetaRayBanDisplay-HelloWorld.md`](Unity-MetaRayBanDisplay-HelloWorld.md) | Study guide: how Unity, Android and the glasses display fit together |
 
-Detalhes de arquitetura, como recompilar a ponte e o que foi validado: [MetaDisplayToolkit/README.md](MetaDisplayToolkit/README.md).
+Architecture details, how to rebuild the bridge and what was validated: [MetaDisplayToolkit/README.md](MetaDisplayToolkit/README.md).
 
-## Recursos
+## Features
 
-- Registro no Meta AI, dispositivos, permissões, sessão e atualizações
-- **Display**: telas, cliques, imagens, 116 ícones nativos e vídeo, montados por código (`Glasses.*`) ou **no Canvas** (`GlassesScreen`)
-- Escolha o que aparece **no celular** e o que aparece **nos óculos** (espelho, miniatura ou só nos óculos)
-- Câmera (vídeo → `RenderTexture`, fotos, áudio), IMU dos óculos e da Neural Band, inputs, fala e "Hey Meta"
-- Óculos simulados (MockDeviceKit) e simulação no Editor
-- Gradle e manifest configurados automaticamente no build
+- Meta AI registration, devices, permissions, session and update screens
+- **Display**: screens, clicks, images, 116 native icons and video, built in code (`Glasses.*`) or **on the Canvas** (`GlassesScreen`)
+- Choose what appears **on the phone** and what appears **on the glasses** (mirror, thumbnail or glasses only)
+- Camera (video → `RenderTexture`, photos, audio), IMU of the glasses and the Neural Band, inputs, speech and "Hey Meta"
+- Simulated glasses (MockDeviceKit) and Editor simulation
+- Gradle and manifest configured automatically at build time
 
-## Requisitos
+## Requirements
 
-Unity 6.0.45+ ou 6.3 LTS+ com Android Build Support · Meta Ray-Ban Display (firmware V128+) · app Meta AI V292+
-com Developer Mode e o Device Access Toolkit instalado nos óculos.
+Unity 6.0.45+ or 6.3 LTS+ with Android Build Support · Meta Ray-Ban Display (firmware V128+) · Meta AI app V292+
+with Developer Mode and the Device Access Toolkit installed on the glasses.
 
-O uso do SDK da Meta está sujeito aos [Meta Wearables Developer Terms](https://wearables.developer.meta.com/terms).
+Use of the Meta SDK is subject to the [Meta Wearables Developer Terms](https://wearables.developer.meta.com/terms).
