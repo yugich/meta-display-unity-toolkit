@@ -1,16 +1,16 @@
-# MetaDisplayToolkit — código-fonte
+# MetaDisplayToolkit — source code
 
-| Pasta / arquivo | O que é |
+| Folder / file | What it is |
 |---|---|
-| `MetaDisplayToolkit.unitypackage` (Releases) | **O arquivo para importar no Unity** (Assets → Import Package → Custom Package…). |
-| `MetaDisplayDemo.apk` (Releases) | APK da cena de exemplo, pronto para testar nos óculos: `adb install -r MetaDisplayDemo.apk` |
-| `Assets/MetaDisplayToolkit/` | Conteúdo do pacote (C#, editor, shader, `.aar`). Leia o `LEIAME.md` dentro dele. |
-| `android-bridge/` | Projeto Gradle da ponte Kotlin → gera `MetaDisplayBridge.aar`. |
-| `tools/unity-tests/` | Scripts de validação (cena de exemplo, teste PlayMode, build do APK, exportação do pacote). |
+| `MetaDisplayToolkit.unitypackage` (Releases) | **The file to import into Unity** (Assets → Import Package → Custom Package…). |
+| `MetaDisplayDemo.apk` (Releases) | APK of the sample scene, ready to test on the glasses: `adb install -r MetaDisplayDemo.apk` |
+| `Assets/MetaDisplayToolkit/` | Package contents (C#, editor, shader, `.aar`). Read the `README.md` inside it. |
+| `android-bridge/` | Gradle project of the Kotlin bridge → builds `MetaDisplayBridge.aar`. |
+| `tools/unity-tests/` | Validation scripts (sample scene, PlayMode test, APK build, package export). |
 
-## Recompilar a ponte Android
+## Rebuilding the Android bridge
 
-Requer JDK 17+ (o do Android Studio serve) e Android SDK 36.
+Requires JDK 17+ (Android Studio's works) and Android SDK 36.
 
 ```powershell
 cd android-bridge
@@ -19,29 +19,30 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 copy bridge\build\outputs\aar\bridge-release.aar ..\Assets\MetaDisplayToolkit\Plugins\Android\MetaDisplayBridge.aar
 ```
 
-A ponte é compilada contra `com.meta.wearable:mwdat-*:1.0.1` com `compileOnly`. As dependências reais entram no
-APK pelo `MetaDisplayGradlePostProcessor` (Editor), conforme `ProjectSettings/MetaDisplaySettings.json`.
+The bridge is compiled against `com.meta.wearable:mwdat-*:1.0.1` with `compileOnly`. The real dependencies enter the
+APK through `MetaDisplayGradlePostProcessor` (Editor), according to `ProjectSettings/MetaDisplaySettings.json`.
 
-## Arquitetura
+## Architecture
 
 ```
 C# (MetaWearables, MetaGlassesDisplay, MetaCamera, ...)
    │  AndroidJavaClass.CallStatic  ─────────────►  Kotlin (MDCore, MDDisplay, MDCamera, MDMotion, MDInputs, MDSpeech, MDVoice, MDMock)
-   │                                                    │ coroutines na main thread do Android
-   │  ◄──── MetaDisplayListener.onEvent(tipo, JSON) ────┘ (AndroidJavaProxy → fila → main thread do Unity)
-   │  ◄──── polling: frames YUV (ByteBuffer direto), IMU (double[]), áudio PCM (byte[])
+   │                                                    │ coroutines on the Android main thread
+   │  ◄──── MetaDisplayListener.onEvent(type, JSON) ────┘ (AndroidJavaProxy → queue → Unity main thread)
+   │  ◄──── polling: YUV frames (direct ByteBuffer), IMU (double[]), PCM audio (byte[])
    ▼
-UI dos óculos: GlassesNode → JSON → LayoutBuilder.kt → DSL do mwdat-display (flexBox/text/image/button/icon/buttonGroup)
+Glasses UI: GlassesNode → JSON → LayoutBuilder.kt → mwdat-display DSL (flexBox/text/image/button/icon/buttonGroup)
 ```
 
-## O que foi validado
+## What was validated
 
-| Teste | Resultado |
+| Test | Result |
 |---|---|
-| Ponte Kotlin compilada contra `mwdat-*:1.0.1` (AGP 8.11.1, Kotlin 2.2.21) | ✅ |
-| Pacote compila no Unity 6000.6.4f1 **sem** `com.unity.ugui` (recursos de Canvas desligados) | ✅ |
-| `.unitypackage` importado em projeto limpo: Unity **6000.6.4f1** e **6000.3.19f1 (6.3 LTS)** | ✅ sem erros |
-| Menu "Criar cena de exemplo" → 3 telas convertidas em JSON correto | ✅ |
-| Teste PlayMode (simulação): registro → sessão → display → navegação → contador → fala → desconexão | ✅ |
-| Build APK IL2CPP/ARM64 (Unity 6.6, AGP 9.1.1): dependências do Maven Central, manifest, `libc++_shared` duplicada resolvida | ✅ 38 MB |
-| Funcionamento com os óculos físicos | ⏳ depende do seu hardware |
+| Kotlin bridge compiled against `mwdat-*:1.0.1` (AGP 8.11.1, Kotlin 2.2.21) | ✅ |
+| Package compiles on Unity 6000.6.4f1 **without** `com.unity.ugui` (Canvas features off) | ✅ |
+| `.unitypackage` imported into a clean project: Unity **6000.6.4f1** and **6000.3.19f1 (6.3 LTS)** | ✅ no errors |
+| "Create Sample Scene" menu → 3 screens converted to correct JSON | ✅ |
+| PlayMode test (simulation): registration → session → display → navigation → counter → speech → disconnect | ✅ |
+| IL2CPP/ARM64 APK build (Unity 6.6, AGP 9.1.1): Maven Central dependencies, manifest, duplicate `libc++_shared` resolved | ✅ 38 MB |
+| On real glasses (Samsung SM-S948B): registration, display, clicks, navigation, video, HQ photo | ✅ |
+| Camera stop → start cycle hardening (queue, stop confirmation, retry, watchdog) | ⏳ not retested on the glasses yet |

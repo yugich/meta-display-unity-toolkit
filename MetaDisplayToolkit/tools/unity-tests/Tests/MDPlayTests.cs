@@ -16,61 +16,61 @@ public class MDPlayTests
     static string Json => MetaGlassesDisplay.LastLayoutJson ?? "";
 
     [UnityTest]
-    public IEnumerator DemoScene_FluxoCompletoNaSimulacao()
+    public IEnumerator SampleScene_FullFlowInSimulation()
     {
         SceneManager.LoadScene("MetaDisplayDemo");
         yield return null;
         yield return WaitUntil(() => MetaGlassesDisplay.IsReady && GlassesScreen.Current != null);
 
-        Debug.Log($"MDTEST play: registro={MetaWearables.Registration} sessao={MetaWearables.Session} display={MetaGlassesDisplay.State} tela={GlassesScreen.Current?.name}");
+        Debug.Log($"MDTEST play: registration={MetaWearables.Registration} session={MetaWearables.Session} display={MetaGlassesDisplay.State} screen={GlassesScreen.Current?.name}");
         Assert.AreEqual(RegistrationState.Registered, MetaWearables.Registration);
         Assert.AreEqual(SessionState.Started, MetaWearables.Session);
         Assert.AreEqual(DisplayState.Started, MetaGlassesDisplay.State);
-        Assert.AreEqual("Início", GlassesScreen.Current.name);
-        StringAssert.Contains("Olá, óculos!", Json);
+        Assert.AreEqual("Home", GlassesScreen.Current.name);
+        StringAssert.Contains("Hello, glasses!", Json);
         Assert.IsTrue(MetaWearables.Devices.ContainsKey("editor-glasses"));
 
-        // Espelho no celular: só a tela atual visível
+        // Phone mirror: only the current screen is visible
         var screens = GlassesScreen.All.ToList();
         foreach (var s in screens)
         {
             var group = s.GetComponent<CanvasGroup>();
-            Assert.IsNotNull(group, s.name + " sem CanvasGroup");
-            Assert.AreEqual(s.IsShowing ? 1f : 0f, group.alpha, "visibilidade de " + s.name);
+            Assert.IsNotNull(group, s.name + " has no CanvasGroup");
+            Assert.AreEqual(s.IsShowing ? 1f : 0f, group.alpha, "visibility of " + s.name);
         }
 
-        // Toque em "Contador" (c0 na tela Início) -> navega
+        // Tap "Counter" (c0 on Home) -> navigates
         MetaGlassesDisplay.SimulateClick("c0");
         yield return null;
-        Assert.AreEqual("Contador", GlassesScreen.Current.name);
-        StringAssert.Contains("Toques: 0", Json);
+        Assert.AreEqual("Counter", GlassesScreen.Current.name);
+        StringAssert.Contains("Taps: 0", Json);
 
-        // Toque em "+1" (c0 na tela Contador) -> contador e reenvio
+        // Tap "+1" (c0 on Counter) -> counter and re-send
         MetaGlassesDisplay.SimulateClick("c0");
         yield return null;
-        StringAssert.Contains("Toques: 1", Json);
+        StringAssert.Contains("Taps: 1", Json);
         MetaGlassesDisplay.SimulateClick("c0");
         yield return null;
-        StringAssert.Contains("Toques: 2", Json);
+        StringAssert.Contains("Taps: 2", Json);
 
-        // "Voltar" (c1) -> Início
+        // "Back" (c1) -> Home
         MetaGlassesDisplay.SimulateClick("c1");
         yield return null;
-        Assert.AreEqual("Início", GlassesScreen.Current.name);
+        Assert.AreEqual("Home", GlassesScreen.Current.name);
 
-        // Por código + fala simulada
+        // Code-built UI + simulated speech
         int sent = 0;
         MetaGlassesDisplay.Sent += _ => sent++;
-        MetaGlassesDisplay.Show(Glasses.Card().Add(Glasses.Heading("Código")));
+        MetaGlassesDisplay.Show(Glasses.Card().Add(Glasses.Heading("Code")));
         yield return null;
         yield return null;
         Assert.GreaterOrEqual(sent, 1);
         string heard = null;
         MetaSpeech.FinalTranscription += t => heard = t;
-        MetaEditorSimulation.SimulateTranscription("olá mundo");
+        MetaEditorSimulation.SimulateTranscription("hello world");
         yield return null;
         yield return null;
-        Assert.AreEqual("olá mundo", heard);
+        Assert.AreEqual("hello world", heard);
 
         MetaWearables.StopSession();
         yield return null;

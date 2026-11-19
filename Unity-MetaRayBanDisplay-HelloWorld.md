@@ -1,156 +1,156 @@
 # Unity → Android → Meta Ray-Ban Display: Hello World
 
-> Guia de estudo baseado na documentação oficial do **Meta Wearables Device Access Toolkit (DAT) v1.0.1**
-> (consultada em 19/11/2026). Fonte principal: <https://wearables.developer.meta.com/docs/develop/dat/display-android>
+> Study guide based on the official **Meta Wearables Device Access Toolkit (DAT) v1.0.1** documentation
+> (checked on 2026-11-19). Main source: <https://wearables.developer.meta.com/docs/develop/dat/display-android>
 
-> **Atalho:** a pasta [MetaDisplayToolkit/](MetaDisplayToolkit/) tem o código de um pacote pronto
-> (`MetaDisplayToolkit.unitypackage`, nas Releases do repositório) com tudo deste guia e mais: todas as capacidades do SDK (display, câmera, IMU,
-> inputs, fala, "Hey Meta", óculos simulados), UI dos óculos desenhada no **Canvas** e configuração automática do
-> Gradle/manifest. Veja o [LEIAME](MetaDisplayToolkit/Assets/MetaDisplayToolkit/LEIAME.md). Este guia continua útil
-> para entender o que acontece por baixo.
+> **Shortcut:** the [MetaDisplayToolkit/](MetaDisplayToolkit/) folder has the source of a ready-made package
+> (`MetaDisplayToolkit.unitypackage`, in the repository Releases) with everything in this guide and more: every SDK
+> capability (display, camera, IMU, inputs, speech, "Hey Meta", simulated glasses), glasses UI drawn on the **Canvas**
+> and automatic Gradle/manifest configuration. See its [README](MetaDisplayToolkit/Assets/MetaDisplayToolkit/README.md).
+> This guide is still useful to understand what happens under the hood.
 
 ---
 
-## 1. Resposta curta: dá para usar Unity?
+## 1. Short answer: can you use Unity?
 
-**Sim, mas só como "app do celular".** O Unity compila o APK Android e roda a lógica em C#. Para falar com os óculos você precisa de uma **ponte nativa em Kotlin** (um `.aar`) que chama o SDK oficial da Meta.
+**Yes, but only as the "phone app".** Unity builds the Android APK and runs the logic in C#. To talk to the glasses you need a **native Kotlin bridge** (an `.aar`) that calls Meta's official SDK.
 
-O que é preciso entender antes de começar:
+What you need to understand before starting:
 
-| Ponto | Situação |
+| Topic | Situation |
 |---|---|
-| SDK oficial para Unity | **Não existe.** O DAT só tem SDK nativo Android (Kotlin) e iOS (Swift). Os pacotes Meta XR/OpenXR para Unity são para Quest e não servem para o Ray-Ban Display. |
-| Onde o app roda | **No celular.** O app manda a interface pronta para os óculos por Bluetooth, via app Meta AI. Os óculos não guardam estado do app. |
-| O que aparece nos óculos | **UI declarativa:** `flexBox`, `text`, `image`, `button`, `icon` e `video` (MP4 por URL). Tela de **600×600**. |
-| A cena 3D do Unity aparece nos óculos? | **Não diretamente.** Não há API para mandar pixels ou frames em tempo real. Dá para enviar **snapshots** (renderizar para textura → PNG → `image(bitmap)`), mas com latência de Bluetooth. Não serve para jogo em tempo real. |
-| Input dos óculos | Toques no touchpad ou Neural Band chegam ao celular como callbacks `onClick`. |
+| Official Unity SDK | **There is none.** DAT only has native Android (Kotlin) and iOS (Swift) SDKs. The Meta XR/OpenXR Unity packages are for Quest and do not work with the Ray-Ban Display. |
+| Where the app runs | **On the phone.** The app sends a ready-made interface to the glasses over Bluetooth, through the Meta AI app. The glasses keep no app state. |
+| What appears on the glasses | **Declarative UI:** `flexBox`, `text`, `image`, `button`, `icon` and `video` (MP4 by URL). **600×600** screen. |
+| Does the Unity 3D scene appear on the glasses? | **Not directly.** There is no API to send pixels or frames in real time. You can send **snapshots** (render to texture → PNG → `image(bitmap)`), but with Bluetooth latency. It is not suitable for real-time games. |
+| Glasses input | Taps on the touchpad or the Neural Band reach the phone as `onClick` callbacks. |
 
-**Quando Unity faz sentido:** você já tem um app ou jogo Unity no celular e quer um HUD ou "segunda tela" nos óculos: placar, notificações, instruções, snapshots.
-**Quando não faz:** se o app existe só para os óculos, o caminho nativo (Kotlin no Android Studio, usando o sample `DisplayAccess`) é mais simples. Se você quer algo que rode *dentro* dos óculos sem app no celular, existem os **Web Apps** (HTML/CSS/JS servidos por HTTPS no navegador Chromium dos óculos). A documentação não cobre build Web do Unity nesse navegador.
+**When Unity makes sense:** you already have a Unity app or game on the phone and want a HUD or "second screen" on the glasses: scoreboard, notifications, instructions, snapshots.
+**When it does not:** if the app exists only for the glasses, the native path (Kotlin in Android Studio, using the `DisplayAccess` sample) is simpler. If you want something that runs *inside* the glasses with no phone app, there are **Web Apps** (HTML/CSS/JS served over HTTPS in the glasses' Chromium browser). The documentation does not cover Unity Web builds in that browser.
 
 ---
 
-## 2. Arquitetura do Hello World
+## 2. Hello World architecture
 
 ```
-┌──────────────────────── Celular Android ────────────────────────┐
+┌──────────────────────── Android phone ──────────────────────────┐
 │                                                                 │
 │  Unity (C#)  MetaDisplayHello.cs                                │
 │     │  AndroidJavaClass.CallStatic(...)        ▲                │
 │     ▼                                          │ AndroidJavaProxy│
-│  metadisplay.aar  (Kotlin: MetaDisplayBridge)  │ (eventos)       │
+│  metadisplay.aar  (Kotlin: MetaDisplayBridge)  │ (events)        │
 │     │                                                           │
 │     ▼                                                           │
 │  com.meta.wearable:mwdat-core + mwdat-display 1.0.1             │
 │     │                                                           │
 │     ▼                                                           │
-│  App Meta AI (registro, Developer Mode, conexão)                │
+│  Meta AI app (registration, Developer Mode, connection)         │
 └─────┼───────────────────────────────────────────────────────────┘
       │ Bluetooth
       ▼
- Meta Ray-Ban Display (app DAT instalado nos óculos renderiza a UI)
+ Meta Ray-Ban Display (the DAT app installed on the glasses renders the UI)
 ```
 
-Fluxo do SDK, que a ponte encapsula:
+SDK flow, wrapped by the bridge:
 
-1. `Wearables.initialize(context)`: uma vez por processo.
-2. `Wearables.startRegistration(activity)`: abre o Meta AI, o usuário aprova e o estado vai para `REGISTERED`.
-3. `Wearables.createSession(AutoDeviceSelector(filter = { it.isDisplayCapable() }))` e depois `session.start()`.
-4. Quando `session.state == STARTED`, chama `session.addDisplay()`.
-5. Quando `display.state == STARTED`, chama `display.sendContent { ... }`. **Cada chamada substitui a tela inteira.**
-6. Para encerrar: `session.removeDisplay()` e depois `session.stop()`.
+1. `Wearables.initialize(context)`: once per process.
+2. `Wearables.startRegistration(activity)`: opens Meta AI, the user approves and the state goes to `REGISTERED`.
+3. `Wearables.createSession(AutoDeviceSelector(filter = { it.isDisplayCapable() }))` and then `session.start()`.
+4. When `session.state == STARTED`, call `session.addDisplay()`.
+5. When `display.state == STARTED`, call `display.sendContent { ... }`. **Each call replaces the whole screen.**
+6. To finish: `session.removeDisplay()` and then `session.stop()`.
 
-### 2.1 Como os dados trafegam: app no celular (DAT) vs Web App
+### 2.1 How data flows: phone app (DAT) vs Web App
 
-São duas plataformas diferentes, e a escolha depende de **onde o seu código roda**:
+They are two different platforms, and the choice depends on **where your code runs**:
 
 ```
- DAT (app no celular)                          Web App
- ────────────────────                          ───────
- ┌──────────── Óculos ────────────┐            ┌──────────── Óculos ────────────┐
- │ câmera · mic · IMU · display   │            │ navegador Chromium             │
- │ (capturam e pré-processam)     │            │   └─ seu HTML/CSS/JS roda AQUI │
+ DAT (phone app)                               Web App
+ ───────────────                               ───────
+ ┌──────────── Glasses ───────────┐            ┌──────────── Glasses ───────────┐
+ │ camera · mic · IMU · display   │            │ Chromium browser               │
+ │ (capture and pre-process)      │            │   └─ your HTML/CSS/JS runs HERE│
  └───────────────┬────────────────┘            │ IMU · display · Neural Band    │
                  │ Bluetooth                   └───────────────┬────────────────┘
-                 │ (vídeo, áudio, IMU ↑ / UI ↓)                │ só localização
-                 ▼                                             ▼ (óculos não têm GPS)
- ┌──────────── Celular ───────────┐            ┌──────────── Celular ───────────┐
- │ Meta AI (registro/permissões)  │            │ Meta AI (pareamento)           │
- │ SEU APP ← o código roda AQUI   │            └────────────────────────────────┘
+                 │ (video, audio, IMU ↑ / UI ↓)                │ location only
+                 ▼                                             ▼ (the glasses have no GPS)
+ ┌──────────── Phone ─────────────┐            ┌──────────── Phone ─────────────┐
+ │ Meta AI (registration/perms)   │            │ Meta AI (pairing)              │
+ │ YOUR APP ← the code runs HERE  │            └────────────────────────────────┘
  └────────────────────────────────┘
 ```
 
-#### No DAT, os óculos são um periférico sem fio
+#### With DAT, the glasses are a wireless peripheral
 
-Os óculos capturam os dados, fazem um pré-processamento e mandam tudo para o celular por **Bluetooth**. Registro e permissões passam pelo app Meta AI.
+The glasses capture the data, pre-process it and send everything to the phone over **Bluetooth**. Registration and permissions go through the Meta AI app.
 
-| Recurso | Como chega ao celular |
+| Feature | How it reaches the phone |
 |---|---|
-| **Câmera** | Os óculos cortam a imagem para 9:16, corrigem a distorção da lente, estabilizam e comprimem em **HEVC (H.265)**. O vídeo vai por **Bluetooth Classic**, com qualidade LOW 360×640, MEDIUM 504×896 ou HIGH 720×1280 e fps de 2, 7, 15, 24 ou 30. Se a banda cair, os óculos baixam a resolução automaticamente e depois o fps, mas **nunca abaixo de 15**. Pedir menos resolução costuma dar uma imagem *melhor*, porque ela sai menos comprimida. |
-| **Microfone** | Pelo perfil **HFP** do Bluetooth, mono, 16 ou 8 kHz, com beamforming que isola a voz de quem usa (o som ambiente fica baixo). Em beta, o áudio também pode vir junto com o vídeo da câmera, em PCM de 16 bits e sem beamforming. A permissão é pedida pelo diálogo normal do Android. |
-| **Alto-falante** | Pelo perfil **A2DP** (estéreo de 44,1 ou 48 kHz), como um fone Bluetooth comum. |
-| **Movimento (IMU)** | Amostras `MotionSample` com acelerômetro, giroscópio, magnetômetro e orientação (quaternion), com a origem indicada: **óculos ou Neural Band**. Ainda em beta, só nos canais de desenvolvimento e beta. |
-| **Display** | O caminho inverso: a interface montada no celular é serializada e vai pelo Bluetooth até os óculos. Por isso layouts pesados e imagens grandes deixam a tela lenta. |
+| **Camera** | The glasses crop the image to 9:16, correct the lens distortion, stabilize it and compress it as **HEVC (H.265)**. The video travels over **Bluetooth Classic**, with LOW 360×640, MEDIUM 504×896 or HIGH 720×1280 quality and 2, 7, 15, 24 or 30 fps. If bandwidth drops, the glasses automatically lower the resolution and then the fps, but **never below 15**. Asking for a lower resolution often gives a *better* image, because it is less compressed. |
+| **Microphone** | Through the Bluetooth **HFP** profile, mono, 16 or 8 kHz, with beamforming that isolates the wearer's voice (ambient sound is kept low). In beta, audio can also come with the camera video, as 16-bit PCM without beamforming. The permission is requested through the regular Android dialog. |
+| **Speaker** | Through the **A2DP** profile (44.1 or 48 kHz stereo), like a regular Bluetooth headset. |
+| **Motion (IMU)** | `MotionSample` samples with accelerometer, gyroscope, magnetometer and orientation (quaternion), with their source: **glasses or Neural Band**. Still in beta, only in the development and beta channels. |
+| **Display** | The reverse path: the interface built on the phone is serialized and sent over Bluetooth to the glasses. That is why heavy layouts and large images make the screen slow. |
 
-Todo o processamento pesado, como IA ou visão computacional, roda **no celular ou na sua nuvem**, e não nos óculos. A documentação também diz que a Meta não acessa as fotos, vídeos e áudios que vão direto dos óculos para o app de terceiros.
+All heavy processing, such as AI or computer vision, runs **on the phone or in your cloud**, not on the glasses. The documentation also says Meta does not access the photos, videos and audio that go straight from the glasses to the third-party app.
 
-#### No Web App, o código roda dentro dos óculos
+#### With a Web App, the code runs inside the glasses
 
-O Web App é servido por HTTPS e roda no navegador Chromium dos próprios óculos.
+A Web App is served over HTTPS and runs in the Chromium browser of the glasses themselves.
 
-| Tem acesso | Não tem acesso |
+| Has access to | Does not have access to |
 |---|---|
-| Movimento e orientação dos óculos (`DeviceMotionEvent` e `DeviceOrientationEvent`, com permissão) | **Câmera** |
-| Orientação do pulso pela Neural Band (`RelativeOrientationSensor`) | **Áudio bruto do microfone.** A voz só chega como texto ditado num campo, ou por chamadas do Meta AI a ferramentas da página (WebMCP, que vem desligado por padrão). |
-| Localização (`navigator.geolocation`), mas a posição **vem do celular pareado** | |
-| Bateria, síntese de voz (TTS), `localStorage` | |
+| Glasses motion and orientation (`DeviceMotionEvent` and `DeviceOrientationEvent`, with permission) | **Camera** |
+| Wrist orientation from the Neural Band (`RelativeOrientationSensor`) | **Raw microphone audio.** Voice only arrives as text dictated into a field, or as Meta AI calls to tools exposed by the page (WebMCP, off by default). |
+| Location (`navigator.geolocation`), but the position **comes from the paired phone** | |
+| Battery, text-to-speech (TTS), `localStorage` | |
 
-#### Por que essa divisão?
+#### Why this split?
 
-A documentação não explica o motivo. Meu palpite é privacidade e hardware. Câmera e microfone são os recursos mais sensíveis, e no DAT eles passam pelo fluxo de permissão do Meta AI. Além disso, os óculos têm bateria e processamento limitados, então faz sentido mandar o trabalho pesado para o celular.
+The documentation does not explain why. My guess is privacy and hardware. Camera and microphone are the most sensitive features, and with DAT they go through the Meta AI permission flow. Also, the glasses have limited battery and compute, so it makes sense to send the heavy work to the phone.
 
-#### O que isso significa para quem usa Unity
+#### What this means for Unity users
 
-Com a ponte Kotlin, o Unity no celular pode **receber** o vídeo da câmera e os dados de movimento e processar tudo em C#, inclusive com modelos de ML no Unity (Inference Engine, antigo Sentis). Depois ele **devolve** o resultado para o display. O caminho completo fica assim:
+With the Kotlin bridge, Unity on the phone can **receive** the camera video and motion data and process everything in C#, including ML models in Unity (Inference Engine, formerly Sentis). Then it **sends** the result back to the display. The full path looks like this:
 
 ```
-câmera/IMU dos óculos ──BT──▶ Kotlin (mwdat-camera / mwdat-motion) ──JNI──▶ C# (processa)
-                                                                              │
-display dos óculos ◀──BT── Kotlin (mwdat-display, sendContent) ◀──JNI─────────┘
+glasses camera/IMU ──BT──▶ Kotlin (mwdat-camera / mwdat-motion) ──JNI──▶ C# (processes)
+                                                                             │
+glasses display ◀──BT── Kotlin (mwdat-display, sendContent) ◀──JNI───────────┘
 ```
 
-O limite em todos esses caminhos é a **banda do Bluetooth**, então pense em resultados resumidos (texto, ícones, imagens pequenas) e não em espelhar frames.
+The limit on every path is **Bluetooth bandwidth**, so think of summarized results (text, icons, small images), not mirroring frames.
 
 ---
 
-## 3. Pré-requisitos
+## 3. Prerequisites
 
-### Hardware e apps
+### Hardware and apps
 
-- **Meta Ray-Ban Display** com firmware **V128 ou superior**. Para conferir: Meta AI → aba Devices → ⚙️ → General → About → Version.
-- **App Meta AI (Android) V292 ou superior.** É a versão mínima do SDK 1.0.1, segundo a página [Version Dependencies](https://wearables.developer.meta.com/docs/develop/dat/version-dependencies).
-- Celular **Android 10 ou superior**. O SDK declara minSdk 29, mas este guia usa **minSdk 31 (Android 12)**, como o sample oficial.
-- **Developer Mode** ✅ (já ativado). Para ativar: Meta AI → Settings → App Info → tocar 5× em *App version*.
-- **App DAT instalado nos óculos.** Sem ele, o display não funciona:
-  1. Coloque os óculos no rosto. É obrigatório.
-  2. No Meta AI, com o Dev Mode ligado, toque em **Install** para instalar o Device Access Toolkit nos óculos.
-  3. Mantenha o Meta AI aberto durante a instalação, que leva de 5 a 10 segundos.
+- **Meta Ray-Ban Display** with firmware **V128 or later**. To check: Meta AI → Devices tab → ⚙️ → General → About → Version.
+- **Meta AI app (Android) V292 or later.** It is the minimum version for SDK 1.0.1, according to the [Version Dependencies](https://wearables.developer.meta.com/docs/develop/dat/version-dependencies) page.
+- Phone with **Android 10 or later**. The SDK declares minSdk 29, but this guide uses **minSdk 31 (Android 12)**, like the official sample.
+- **Developer Mode** on. To turn it on: Meta AI → Settings → App Info → tap *App version* 5×.
+- **DAT app installed on the glasses.** Without it, the display does not work:
+  1. Put the glasses on. This is required.
+  2. In Meta AI, with Dev Mode on, tap **Install** to install the Device Access Toolkit on the glasses.
+  3. Keep Meta AI open during the installation, which takes 5 to 10 seconds.
 
-### Ferramentas no PC
+### Tools on the PC
 
-- **Android Studio** recente, com **JDK 17**. Ele serve para compilar a ponte `.aar`.
-- **Unity 6.3 LTS (6000.3.x)** com o módulo **Android Build Support** (OpenJDK, Android SDK e NDK).
-  - Unity 6.0 também funciona a partir da **6000.0.45f1**.
-  - ⚠️ **Não use Unity 2022.3 nem versões anteriores.** O `mwdat-core` puxa `androidx.core:1.16.0`, que exige **AGP ≥ 8.6.0** e **compileSdk ≥ 35**. O Unity 6.3 já traz AGP 8.10, 9.0 ou 9.1, conforme o patch.
+- A recent **Android Studio**, with **JDK 17**. It is used to build the `.aar` bridge.
+- **Unity 6.3 LTS (6000.3.x)** with the **Android Build Support** module (OpenJDK, Android SDK and NDK).
+  - Unity 6.0 also works from **6000.0.45f1** on.
+  - ⚠️ **Do not use Unity 2022.3 or older.** `mwdat-core` pulls `androidx.core:1.16.0`, which requires **AGP ≥ 8.6.0** and **compileSdk ≥ 35**. Unity 6.3 ships AGP 8.10, 9.0 or 9.1, depending on the patch.
 
-### Estrutura de pastas sugerida
+### Suggested folder layout
 
 ```
-Meta-display/
-├─ meta-wearables-dat-android/          (clone do repo oficial)
-│  └─ samples/DisplayAccess/            (projeto Gradle; vamos adicionar o módulo da ponte aqui)
-│     └─ metadisplay/                   (Android Library → gera metadisplay-release.aar)
-└─ unity-hello/                         (projeto Unity 6.3)
+my-project/
+├─ meta-wearables-dat-android/          (clone of the official repo)
+│  └─ samples/DisplayAccess/            (Gradle project; we add the bridge module here)
+│     └─ metadisplay/                   (Android Library → builds metadisplay-release.aar)
+└─ unity-hello/                         (Unity 6.3 project)
    └─ Assets/
       ├─ Plugins/Android/
       │  ├─ metadisplay-release.aar
@@ -162,53 +162,53 @@ Meta-display/
 
 ---
 
-## 4. Passo 0: validar o hardware com o sample oficial (sem Unity)
+## 4. Step 0: validate the hardware with the official sample (no Unity)
 
-Faça isso antes de mexer no Unity. Se o sample nativo não funcionar, o Unity também não vai funcionar, e assim você separa problema de hardware ou configuração de problema de integração.
+Do this before touching Unity. If the native sample does not work, Unity will not work either, and this way you separate hardware or configuration problems from integration problems.
 
 ```powershell
-cd E:\Projetos\Estudos\Meta-display
+cd <your-project-folder>
 git clone https://github.com/meta/meta-wearables-dat-android.git
 ```
 
-1. Abra `meta-wearables-dat-android/samples/DisplayAccess` no Android Studio.
-2. Em `local.properties`, adicione as credenciais. Em Developer Mode, a documentação manda usar `0`:
+1. Open `meta-wearables-dat-android/samples/DisplayAccess` in Android Studio.
+2. In `local.properties`, add the credentials. In Developer Mode, the documentation says to use `0`:
    ```properties
    mwdat_application_id=0
    mwdat_client_token=0
    ```
-3. Rode no celular, registre o app no Meta AI, conecte e abra um dos exemplos. O conteúdo deve aparecer nos óculos.
+3. Run it on the phone, register the app in Meta AI, connect and open one of the examples. The content should appear on the glasses.
 
-Esse sample usa **AGP 8.11.1, Kotlin 2.2.21, compileSdk 36, minSdk 31 e Java 17**. Por isso ele também é uma ótima base para compilar a ponte.
+This sample uses **AGP 8.11.1, Kotlin 2.2.21, compileSdk 36, minSdk 31 and Java 17**. That makes it a great base to build the bridge too.
 
 ---
 
-## 5. Passo 1: a ponte Kotlin (`metadisplay.aar`)
+## 5. Step 1: the Kotlin bridge (`metadisplay.aar`)
 
-### 5.1 Criar o módulo
+### 5.1 Create the module
 
-No Android Studio, com o projeto `DisplayAccess` aberto:
+In Android Studio, with the `DisplayAccess` project open:
 
 1. **File → New → New Module… → Android Library**
    - Module name: `metadisplay`
-   - Package name: `com.estudos.metadisplay`
+   - Package name: `com.example.metadisplay`
    - Language: Kotlin · Minimum SDK: API 31
-2. Confira se o assistente fez estas três coisas. Se não fez, faça à mão:
-   - `settings.gradle.kts` tem `include(":metadisplay")`.
-   - `gradle/libs.versions.toml`, em `[plugins]`, tem:
+2. Check that the wizard did these three things. If it did not, do them by hand:
+   - `settings.gradle.kts` has `include(":metadisplay")`.
+   - `gradle/libs.versions.toml`, under `[plugins]`, has:
      ```toml
      android-library = { id = "com.android.library", version.ref = "agp" }
      ```
-   - O `build.gradle.kts` da raiz, dentro de `plugins { }`, tem:
+   - The root `build.gradle.kts`, inside `plugins { }`, has:
      ```kotlin
      alias(libs.plugins.android.library) apply false
      ```
 
-> Se o assistente criar aliases com nomes diferentes, use os nomes que ele criou. O importante é que o plugin de library use a **mesma versão de AGP** do sample e o **Kotlin seja 2.2.x**.
+> If the wizard creates aliases with different names, use the names it created. What matters is that the library plugin uses the **same AGP version** as the sample and that **Kotlin is 2.2.x**.
 
 ### 5.2 `metadisplay/build.gradle.kts`
 
-Substitua todo o conteúdo do arquivo por:
+Replace the whole file with:
 
 ```kotlin
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -219,12 +219,12 @@ plugins {
 }
 
 android {
-  namespace = "com.estudos.metadisplay"
+  namespace = "com.example.metadisplay"
   compileSdk = 36
 
   defaultConfig {
     minSdk = 31
-    // Vai dentro do .aar: impede que o R8 do Unity remova a ponte (chamada via JNI/reflexão)
+    // Shipped inside the .aar: prevents Unity's R8 from removing the bridge (called through JNI/reflection)
     consumerProguardFiles("consumer-rules.pro")
   }
 
@@ -237,8 +237,8 @@ android {
 kotlin { compilerOptions { jvmTarget = JvmTarget.JVM_17 } }
 
 dependencies {
-  // Usados só para compilar. O Unity vai baixar essas libs de novo (ver mainTemplate.gradle),
-  // porque um .aar local NÃO leva as dependências transitivas junto.
+  // Used only to compile. Unity downloads these libraries again (see mainTemplate.gradle),
+  // because a local .aar does NOT carry its transitive dependencies.
   implementation(libs.mwdat.core)
   implementation(libs.mwdat.display)
 }
@@ -247,13 +247,13 @@ dependencies {
 ### 5.3 `metadisplay/consumer-rules.pro`
 
 ```proguard
--keep class com.estudos.metadisplay.** { *; }
+-keep class com.example.metadisplay.** { *; }
 ```
 
-### 5.4 `metadisplay/src/main/java/com/estudos/metadisplay/MetaDisplayBridge.kt`
+### 5.4 `metadisplay/src/main/java/com/example/metadisplay/MetaDisplayBridge.kt`
 
 ```kotlin
-package com.estudos.metadisplay
+package com.example.metadisplay
 
 import android.app.Activity
 import android.content.Context
@@ -286,21 +286,21 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Implementada no C# via AndroidJavaProxy. Recebe todos os eventos da ponte. */
+/** Implemented in C# through AndroidJavaProxy. Receives every bridge event. */
 interface MetaDisplayListener {
   fun onEvent(type: String, message: String)
 }
 
 /**
- * Ponte Unity -> DAT SDK.
- * C#: new AndroidJavaClass("com.estudos.metadisplay.MetaDisplayBridge").CallStatic("metodo", ...)
- * Todo o trabalho roda em Dispatchers.Main (thread principal do Android), então não há corrida.
+ * Unity -> DAT SDK bridge.
+ * C#: new AndroidJavaClass("com.example.metadisplay.MetaDisplayBridge").CallStatic("method", ...)
+ * All the work runs on Dispatchers.Main (the Android main thread), so there are no races.
  */
 object MetaDisplayBridge {
   private const val TAG = "MetaDisplayBridge"
 
   private val crashGuard = CoroutineExceptionHandler { _, t ->
-    Log.e(TAG, "Erro inesperado", t)
+    Log.e(TAG, "Unexpected error", t)
     emit("error", t.message ?: t.toString())
   }
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main + crashGuard)
@@ -312,9 +312,9 @@ object MetaDisplayBridge {
   private var display: Display? = null
   private val sessionJobs = mutableListOf<Job>()
 
-  // ───────────── API chamada pelo Unity ─────────────
+  // ───────────── API called by Unity ─────────────
 
-  /** Chame depois que a permissão BLUETOOTH_CONNECT for concedida. */
+  /** Call it after the BLUETOOTH_CONNECT permission is granted. */
   @JvmStatic
   fun initialize(activity: Activity, callback: MetaDisplayListener) {
     listener = callback
@@ -324,21 +324,21 @@ object MetaDisplayBridge {
         return@launch
       }
       appContext = activity.applicationContext
-      // A única falha possível aqui é ALREADY_INITIALIZED, que é inofensiva
+      // The only possible failure here is ALREADY_INITIALIZED, which is harmless
       Wearables.initialize(appContext).onFailure { error, _ -> emit("info", error.description) }
       initialized = true
 
       launch { Wearables.registrationState.collect { emit("registration", "$it") } }
       launch {
         Wearables.registrationErrorStream.collect {
-          emit("error", "Registro: ${it.getLocalizedDescription(appContext)}")
+          emit("error", "Registration: ${it.getLocalizedDescription(appContext)}")
         }
       }
-      launch { Wearables.devices.collect { emit("devices", "${it.size} dispositivo(s)") } }
+      launch { Wearables.devices.collect { emit("devices", "${it.size} device(s)") } }
     }
   }
 
-  /** Abre o Meta AI para o usuário aprovar o app (em Dev Mode aparece em "Developer mode apps"). */
+  /** Opens Meta AI so the user approves the app (in Dev Mode it shows up under "Developer mode apps"). */
   @JvmStatic
   fun startRegistration(activity: Activity) {
     scope.launch {
@@ -350,16 +350,16 @@ object MetaDisplayBridge {
     }
   }
 
-  /** Cria a sessão com os primeiros óculos que tenham display e anexa o Display. */
+  /** Creates the session with the first glasses that have a display and attaches the Display. */
   @JvmStatic
   fun connect() {
     scope.launch {
       if (Wearables.registrationState.value != RegistrationState.REGISTERED) {
-        emit("error", "Registre o app no Meta AI antes de conectar")
+        emit("error", "Register the app in Meta AI before connecting")
         return@launch
       }
       if (session != null) {
-        emit("info", "Sessão já está ativa")
+        emit("info", "Session is already active")
         return@launch
       }
       Wearables.createSession(AutoDeviceSelector(filter = { it.isDisplayCapable() })).fold(
@@ -369,7 +369,7 @@ object MetaDisplayBridge {
     }
   }
 
-  /** O Hello World: um card com título e texto, mais um botão que avisa o Unity quando é tocado. */
+  /** The Hello World: a card with a title and text, plus a button that notifies Unity when tapped. */
   @JvmStatic
   fun showHelloWorld(title: String, body: String) {
     scope.launch {
@@ -381,22 +381,22 @@ object MetaDisplayBridge {
             text(body, style = TextStyle.BODY, color = TextColor.SECONDARY)
           }
           button(
-              label = "Toque aqui",
+              label = "Tap here",
               style = ButtonStyle.PRIMARY,
               iconName = IconName.CHECKMARK,
-              // SDK 1.0+: a primeira ação PRIMARY já recebe o foco quando a tela aparece
+              // SDK 1.0+: the first PRIMARY action gets the focus when the screen appears
               actionRole = ActionRole.PRIMARY,
               onClick = { emit("click", "hello") },
           )
         }
       }.fold(
-          onSuccess = { emit("sent", "Hello World enviado") },
+          onSuccess = { emit("sent", "Hello World sent") },
           onFailure = { error, _ -> emit("error", "sendContent: ${error.description}") },
       )
     }
   }
 
-  /** Bônus: mostra um PNG gerado pelo Unity (ex.: snapshot de uma câmera). */
+  /** Bonus: shows a PNG generated by Unity (e.g. a camera snapshot). */
   @JvmStatic
   fun showImage(png: ByteArray, caption: String) {
     scope.launch {
@@ -404,7 +404,7 @@ object MetaDisplayBridge {
       val bitmap =
           withContext(Dispatchers.Default) { BitmapFactory.decodeByteArray(png, 0, png.size) }
       if (bitmap == null) {
-        emit("error", "PNG inválido")
+        emit("error", "Invalid PNG")
         return@launch
       }
       d.sendContent {
@@ -413,7 +413,7 @@ object MetaDisplayBridge {
           text(caption, style = TextStyle.META, color = TextColor.SECONDARY)
         }
       }.fold(
-          onSuccess = { emit("sent", "Imagem enviada") },
+          onSuccess = { emit("sent", "Image sent") },
           onFailure = { error, _ -> emit("error", "sendContent: ${error.description}") },
       )
     }
@@ -442,7 +442,7 @@ object MetaDisplayBridge {
     scope.launch { Wearables.openFirmwareUpdate(activity) }
   }
 
-  // ───────────── internos ─────────────
+  // ───────────── internals ─────────────
 
   private fun observeAndStart(newSession: DeviceSession) {
     session = newSession
@@ -452,15 +452,15 @@ object MetaDisplayBridge {
           newSession.state.collect { state ->
             emit("session", "$state")
             when (state) {
-              // Só anexe o Display depois que a sessão estiver STARTED
+              // Only attach the Display after the session is STARTED
               DeviceSessionState.STARTED -> if (display == null) attachDisplay(newSession)
-              // STOPPED é terminal: para reconectar é preciso criar outra sessão
+              // STOPPED is terminal: reconnecting requires a new session
               DeviceSessionState.STOPPED -> clearSession()
               else -> Unit
             }
           }
         }
-    newSession.start() // retorna na hora; o progresso chega por state/errors
+    newSession.start() // returns immediately; progress arrives via state/errors
   }
 
   private fun attachDisplay(s: DeviceSession) {
@@ -471,7 +471,7 @@ object MetaDisplayBridge {
               scope.launch {
                 newDisplay.state.collect { state ->
                   emit("display", "$state")
-                  if (state == DisplayState.STARTED) emit("ready", "Display pronto")
+                  if (state == DisplayState.STARTED) emit("ready", "Display ready")
                 }
               }
         },
@@ -483,14 +483,14 @@ object MetaDisplayBridge {
     if (error == DeviceSessionError.DAT_APP_ON_THE_GLASSES_UPDATE_REQUIRED) {
       emit("update_required", error.description)
     } else {
-      emit("error", "Sessão: ${error.description}")
+      emit("error", "Session: ${error.description}")
     }
   }
 
   private fun readyDisplay(): Display? {
     val d = display
     if (d == null || d.state.value != DisplayState.STARTED) {
-      emit("error", "Display ainda não está pronto (conecte primeiro)")
+      emit("error", "Display is not ready yet (connect first)")
       return null
     }
     return d
@@ -510,78 +510,90 @@ object MetaDisplayBridge {
 }
 ```
 
-### 5.5 Gerar o `.aar`
+### 5.5 Build the `.aar`
 
 ```powershell
-cd E:\Projetos\Estudos\Meta-display\meta-wearables-dat-android\samples\DisplayAccess
+cd <your-project-folder>\meta-wearables-dat-android\samples\DisplayAccess
 .\gradlew.bat :metadisplay:assembleRelease
 ```
 
-Saída: `metadisplay\build\outputs\aar\metadisplay-release.aar`
+Output: `metadisplay\build\outputs\aar\metadisplay-release.aar`
 
 ---
 
-## 6. Passo 2: projeto Unity
+## 6. Step 2: Unity project
 
-### 6.1 Criar e configurar
+### 6.1 Create and configure
 
-1. No Unity Hub, crie um projeto **Unity 6.3 LTS** (template *Universal 3D* ou *2D*) chamado `unity-hello`.
+1. In Unity Hub, create a **Unity 6.3 LTS** project (*Universal 3D* or *2D* template) named `unity-hello`.
 2. **File → Build Profiles → Android → Switch Platform**.
-3. Abra **Edit → Project Settings → Player → aba Android → Other Settings**:
-   - **Package Name:** `com.estudos.metadisplayhello`
+3. Open **Edit → Project Settings → Player → Android tab → Other Settings**:
+   - **Package Name:** `com.example.metadisplayhello`
    - **Minimum API Level:** Android 12 (API 31)
-   - **Target API Level:** **35 ou 36.** Precisa ser ≥ 35, porque o Unity usa esse valor como `compileSdk`. Se o Unity disser que falta a plataforma, deixe-o atualizar o SDK ou aponte para o SDK do Android Studio em *Preferences → External Tools*.
+   - **Target API Level:** **35 or 36.** It must be ≥ 35, because Unity uses this value as `compileSdk`. If Unity says the platform is missing, let it update the SDK or point it to Android Studio's SDK in *Preferences → External Tools*.
    - **Scripting Backend:** IL2CPP · **Target Architectures:** ARM64
-   - **Application Entry Point:** GameActivity (o padrão) ou Activity. Os dois funcionam.
-4. Em **Publishing Settings → Build**, marque:
+   - **Application Entry Point:** GameActivity (the default) or Activity. Both work.
+4. Under **Publishing Settings → Build**, check:
    - ☑ Custom Main Manifest
    - ☑ Custom Main Gradle Template
    - ☑ Custom Gradle Properties Template
+   - ☑ Custom Launcher Gradle Template
 
-   O Unity cria esses arquivos em `Assets/Plugins/Android/`.
-5. Copie `metadisplay-release.aar` para `Assets/Plugins/Android/`. No Inspector do arquivo, confirme que a plataforma **Android** está marcada.
+   Unity creates these files in `Assets/Plugins/Android/`.
+5. Copy `metadisplay-release.aar` to `Assets/Plugins/Android/`. In the file's Inspector, confirm the **Android** platform is checked.
 
 ### 6.2 `Assets/Plugins/Android/mainTemplate.gradle`
 
-Mantenha tudo o que o Unity gerou e adicione só as duas linhas do DAT no bloco `dependencies`, **antes** de `**DEPS**`:
+Keep everything Unity generated and only add the two DAT lines to the `dependencies` block, **before** `**DEPS**`:
 
 ```groovy
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    // Meta Wearables Device Access Toolkit (o .aar da ponte não traz as dependências transitivas)
+    // Meta Wearables Device Access Toolkit (the bridge .aar does not carry its transitive dependencies)
     implementation 'com.meta.wearable:mwdat-core:1.0.1'
     implementation 'com.meta.wearable:mwdat-display:1.0.1'
 **DEPS**}
 ```
 
-O Gradle do Unity já declara `google()` e `mavenCentral()`, e o DAT é publicado no Maven Central. As dependências transitivas (Kotlin stdlib 2.2, coroutines, AndroidX, OkHttp, protobuf etc.) vêm automaticamente.
+Unity's Gradle already declares `google()` and `mavenCentral()`, and DAT is published on Maven Central. The transitive dependencies (Kotlin stdlib 2.2, coroutines, AndroidX, OkHttp, protobuf, etc.) come automatically.
 
-> Alternativa: se você já usa o **External Dependency Manager (EDM4U)**, declare os dois artefatos num `Dependencies.xml` em vez de editar o template.
+> Alternative: if you already use the **External Dependency Manager (EDM4U)**, declare both artifacts in a `Dependencies.xml` instead of editing the template.
 
-### 6.3 `Assets/Plugins/Android/gradleTemplate.properties`
+### 6.3 `Assets/Plugins/Android/launcherTemplate.gradle`
 
-Confirme que esta linha existe. Se não existir, adicione:
+The SDK's `fbjni` dependency and Unity's IL2CPP both ship `libc++_shared.so`. Without this, the build fails with
+`2 files found with path 'lib/arm64-v8a/libc++_shared.so'`. Inside the `android { }` block, add:
+
+```groovy
+    packaging {
+        jniLibs { pickFirsts += ['lib/*/libc++_shared.so'] }
+    }
+```
+
+### 6.4 `Assets/Plugins/Android/gradleTemplate.properties`
+
+Make sure this line exists. If it does not, add it:
 
 ```properties
 android.useAndroidX=true
 ```
 
-### 6.4 `Assets/Plugins/Android/AndroidManifest.xml`
+### 6.5 `Assets/Plugins/Android/AndroidManifest.xml`
 
-Parta do arquivo gerado pelo Unity e acrescente os blocos marcados com `DAT`. O exemplo abaixo usa a GameActivity. Se você escolheu *Activity*, coloque o segundo `<intent-filter>` na `com.unity3d.player.UnityPlayerActivity`.
+Start from the file Unity generated and add the blocks marked `DAT`. The example below uses GameActivity. If you picked *Activity*, put the second `<intent-filter>` on `com.unity3d.player.UnityPlayerActivity`.
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- DAT: permissões de Bluetooth e Internet -->
+    <!-- DAT: Bluetooth and Internet permissions -->
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application>
-        <!-- DAT: em Developer Mode use 0. Em produção, use os valores do Wearables Developer Center -->
+        <!-- DAT: use 0 in Developer Mode. In production, use the values from the Wearables Developer Center -->
         <meta-data android:name="com.meta.wearable.mwdat.APPLICATION_ID" android:value="0" />
         <meta-data android:name="com.meta.wearable.mwdat.CLIENT_TOKEN" android:value="0" />
 
@@ -593,7 +605,7 @@ Parta do arquivo gerado pelo Unity e acrescente os blocos marcados com `DAT`. O 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- DAT: esquema de callback que o Meta AI usa para voltar ao app -->
+            <!-- DAT: callback scheme Meta AI uses to return to the app -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -608,9 +620,9 @@ Parta do arquivo gerado pelo Unity e acrescente os blocos marcados com `DAT`. O 
 </manifest>
 ```
 
-### 6.5 `Assets/Scripts/MetaDisplayHello.cs`
+### 6.6 `Assets/Scripts/MetaDisplayHello.cs`
 
-Crie um GameObject vazio na cena, chame de `MetaDisplay` e adicione este script. A interface usa IMGUI para não precisar montar Canvas.
+Create an empty GameObject in the scene, name it `MetaDisplay` and add this script. The interface uses IMGUI so no Canvas is needed.
 
 ```csharp
 using System;
@@ -621,12 +633,12 @@ using UnityEngine;
 using UnityEngine.Android;
 #endif
 
-/// Hello World no Meta Ray-Ban Display a partir do Unity.
-/// Funciona só no celular Android: o plugin nativo não roda no Editor.
+/// Hello World on the Meta Ray-Ban Display from Unity.
+/// Works only on the Android phone: the native plugin does not run in the Editor.
 public class MetaDisplayHello : MonoBehaviour
 {
-    const string BridgeClass = "com.estudos.metadisplay.MetaDisplayBridge";
-    const string ListenerInterface = "com.estudos.metadisplay.MetaDisplayListener";
+    const string BridgeClass = "com.example.metadisplay.MetaDisplayBridge";
+    const string ListenerInterface = "com.example.metadisplay.MetaDisplayListener";
     const string BluetoothConnect = "android.permission.BLUETOOTH_CONNECT";
 
     readonly ConcurrentQueue<KeyValuePair<string, string>> events =
@@ -640,8 +652,8 @@ public class MetaDisplayHello : MonoBehaviour
     string registration = "?", sessionState = "-", displayState = "-";
     int taps;
 
-    // Recebe os eventos do Kotlin. Roda numa thread do Android, NÃO na main thread do Unity,
-    // então só enfileira. Quem processa é o Update().
+    // Receives the Kotlin events. Runs on an Android thread, NOT on the Unity main thread,
+    // so it only queues them. Update() processes them.
     class Listener : AndroidJavaProxy
     {
         readonly ConcurrentQueue<KeyValuePair<string, string>> queue;
@@ -671,11 +683,11 @@ public class MetaDisplayHello : MonoBehaviour
             var callbacks = new PermissionCallbacks();
             callbacks.PermissionGranted += _ => permissionGranted = true;
             callbacks.PermissionDenied += _ =>
-                events.Enqueue(new KeyValuePair<string, string>("error", "Permissão Bluetooth negada"));
+                events.Enqueue(new KeyValuePair<string, string>("error", "Bluetooth permission denied"));
             Permission.RequestUserPermission(BluetoothConnect, callbacks);
         }
 #else
-        AddLog("Rode no celular Android: o plugin nativo não funciona no Editor.");
+        AddLog("Run it on the Android phone: the native plugin does not work in the Editor.");
 #endif
     }
 
@@ -685,7 +697,7 @@ public class MetaDisplayHello : MonoBehaviour
         {
             initialized = true;
             bridge.CallStatic("initialize", activity, new Listener(events));
-            AddLog("DAT inicializado");
+            AddLog("DAT initialized");
         }
 
         while (events.TryDequeue(out var e)) HandleEvent(e.Key, e.Value);
@@ -710,7 +722,7 @@ public class MetaDisplayHello : MonoBehaviour
                 updateRequired = true;
                 break;
             case "click":
-                // Ida e volta: toque nos óculos -> Kotlin -> C# -> nova tela nos óculos
+                // Round trip: tap on the glasses -> Kotlin -> C# -> new screen on the glasses
                 taps++;
                 SendHello();
                 break;
@@ -719,12 +731,12 @@ public class MetaDisplayHello : MonoBehaviour
     }
 
     void SendHello() =>
-        bridge.CallStatic("showHelloWorld", "Hello, World!", $"Enviado pelo Unity - toques: {taps}");
+        bridge.CallStatic("showHelloWorld", "Hello, World!", $"Sent from Unity - taps: {taps}");
 
-    // Bônus: renderiza a Main Camera numa textura 400x400 e manda como imagem
+    // Bonus: renders the Main Camera into a 400x400 texture and sends it as an image
     void SendUnitySnapshot()
     {
-        const int size = 400; // menor = mais rápido pelo Bluetooth (o display tem 600x600)
+        const int size = 400; // smaller = faster over Bluetooth (the display is 600x600)
         var cam = Camera.main;
         var rt = RenderTexture.GetTemporary(size, size, 24,
             RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
@@ -745,10 +757,10 @@ public class MetaDisplayHello : MonoBehaviour
         byte[] png = tex.EncodeToPNG();
         Destroy(tex);
 
-        // sbyte[] vira byte[] no Java sem ambiguidade de conversão
+        // sbyte[] maps to Java byte[] without conversion ambiguity
         var data = new sbyte[png.Length];
         Buffer.BlockCopy(png, 0, data, 0, png.Length);
-        bridge.CallStatic("showImage", data, "Renderizado no Unity");
+        bridge.CallStatic("showImage", data, "Rendered in Unity");
     }
 
     void OnGUI()
@@ -758,21 +770,21 @@ public class MetaDisplayHello : MonoBehaviour
         float h = Screen.height * 0.07f;
 
         GUILayout.BeginArea(new Rect(40, 100, Screen.width - 80, Screen.height - 140));
-        GUILayout.Label($"Registro: {registration}\nSessão: {sessionState}\nDisplay: {displayState}");
+        GUILayout.Label($"Registration: {registration}\nSession: {sessionState}\nDisplay: {displayState}");
 
-        if (GUILayout.Button("1. Registrar no Meta AI", GUILayout.Height(h)))
+        if (GUILayout.Button("1. Register in Meta AI", GUILayout.Height(h)))
             bridge?.CallStatic("startRegistration", activity);
-        if (GUILayout.Button("2. Conectar ao Display", GUILayout.Height(h)))
+        if (GUILayout.Button("2. Connect to the Display", GUILayout.Height(h)))
             bridge?.CallStatic("connect");
 
         GUI.enabled = displayReady;
-        if (GUILayout.Button("3. Enviar Hello World", GUILayout.Height(h))) SendHello();
-        if (GUILayout.Button("Bônus: enviar frame do Unity", GUILayout.Height(h))) SendUnitySnapshot();
+        if (GUILayout.Button("3. Send Hello World", GUILayout.Height(h))) SendHello();
+        if (GUILayout.Button("Bonus: send a Unity frame", GUILayout.Height(h))) SendUnitySnapshot();
         GUI.enabled = true;
 
-        if (GUILayout.Button("Desconectar", GUILayout.Height(h)))
+        if (GUILayout.Button("Disconnect", GUILayout.Height(h)))
             bridge?.CallStatic("disconnect");
-        if (updateRequired && GUILayout.Button("Atualizar app DAT nos óculos", GUILayout.Height(h)))
+        if (updateRequired && GUILayout.Button("Update the DAT app on the glasses", GUILayout.Height(h)))
             bridge?.CallStatic("openDatGlassesAppUpdate", activity);
 
         GUILayout.Space(20);
@@ -792,98 +804,99 @@ public class MetaDisplayHello : MonoBehaviour
 
 ---
 
-## 7. Passo 3: build e teste no aparelho
+## 7. Step 3: build and test on the device
 
-1. Ative a depuração USB no celular e conecte o cabo.
-2. No Unity, abra **File → Build Profiles → Android → Build And Run**.
-3. No celular:
-   1. Aceite a permissão de **Dispositivos próximos (Bluetooth)**. O log deve mostrar `DAT inicializado` e `[registration] AVAILABLE`.
-   2. **1. Registrar no Meta AI**: o Meta AI abre, você aprova e o app volta. O estado esperado é `REGISTERED`. Em Dev Mode, o app aparece em *Meta AI → App connections → Developer mode apps*.
-   3. Com os óculos **no rosto e conectados**, toque em **2. Conectar ao Display**. A sequência esperada é `session: STARTING → STARTED` e depois `display: STARTING → STARTED`.
-   4. **3. Enviar Hello World**: o card aparece nos óculos 🎉
-   5. Toque em **"Toque aqui"** nos óculos, pelo touchpad ou pela Neural Band. O contador de toques sobe e a tela é reenviada.
-4. Para ver os logs no PC:
+1. Turn on USB debugging on the phone and plug in the cable.
+2. In Unity, open **File → Build Profiles → Android → Build And Run**.
+3. On the phone:
+   1. Accept the **Nearby devices (Bluetooth)** permission. The log should show `DAT initialized` and `[registration] AVAILABLE`.
+   2. **1. Register in Meta AI**: Meta AI opens, you approve and the app comes back. The expected state is `REGISTERED`. In Dev Mode, the app appears under *Meta AI → App connections → Developer mode apps*.
+   3. With the glasses **on your face and connected**, tap **2. Connect to the Display**. The expected sequence is `session: STARTING → STARTED` and then `display: STARTING → STARTED`.
+   4. **3. Send Hello World**: the card appears on the glasses 🎉
+   5. Tap **"Tap here"** on the glasses, with the touchpad or the Neural Band. The tap counter goes up and the screen is re-sent.
+4. To see the logs on the PC:
    ```powershell
    adb logcat -s MetaDisplayBridge Unity
    ```
 
 ---
 
-## 8. Limitações do Display (vale para Unity ou nativo)
+## 8. Display limitations (Unity or native)
 
-- **Tela de 600×600.** Imagens maiores que isso não melhoram nada e deixam o envio por Bluetooth mais lento.
-- **Cada `sendContent` substitui a tela inteira.** Não existe atualização parcial.
-- A rolagem é **só vertical**.
-- **O display escurece após 20 s sem interação e dorme aos 25 s.** A sessão continua viva. Quando o display acorda, você pode reenviar o conteúdo.
-- **Tocar com dois dedos na haste dos óculos = Back.** Na tela raiz, isso **encerra a sessão**. Trate o evento `session: STOPPED` no Unity.
-- **Vídeo:** só MP4 por URL HTTPS, até **400 px por lado e 70.000 px no total**, um vídeo por vez.
-- **Imagens:** por URL HTTPS ou `Bitmap`, que é o que o bônus do snapshot usa.
-- Ligações, notificações e outros eventos do sistema podem interromper o seu conteúdo.
-- O dispositivo pode recusar o display com `CAPABILITY_DENIED` mesmo com as versões corretas. Trate isso como um resultado esperado.
-- Dica de design: em displays de guia de onda, **preto fica transparente**. Fundos escuros "somem" e cores claras aparecem.
+- **600×600 screen.** Images larger than that bring nothing and make sending over Bluetooth slower.
+- **Each `sendContent` replaces the whole screen.** There are no partial updates.
+- Scrolling is **vertical only**.
+- **The display dims after 20 s without interaction and sleeps at 25 s.** The session stays alive. When the display wakes up, you can re-send the content.
+- **A two-finger tap on the glasses temple = Back.** On the root screen, this **ends the session**. Handle the `session: STOPPED` event in Unity.
+- **Video:** MP4 by HTTPS URL only, up to **400 px per side and 70,000 px total**, one video at a time.
+- **Images:** by HTTPS URL or `Bitmap`, which is what the snapshot bonus uses.
+- Calls, notifications and other system events can interrupt your content.
+- The device can refuse the display with `CAPABILITY_DENIED` even with the right versions. Treat it as an expected outcome.
+- Design tip: on waveguide displays, **black is transparent**. Dark backgrounds "disappear" and bright colors show up.
 
 ---
 
-## 9. Problemas comuns
+## 9. Common problems
 
-| Sintoma | Causa provável e solução |
+| Symptom | Likely cause and fix |
 |---|---|
-| `checkDebugAarMetadata`: *requires compileSdk 35* / *AGP 8.6.0* | Unity antigo ou Target API < 35. Use Unity 6.3 LTS (ou 6000.0.45f1+) e Target API 35/36. |
-| `Duplicate class kotlin.*` ou `kotlinx.*` | Outro plugin Unity traz uma Kotlin stdlib antiga em `.jar`. Remova o `.jar` ou deixe o Gradle resolver uma versão só. |
-| `2 files found with path 'META-INF/...'` | Ative *Custom Launcher Gradle Template* e, no bloco `android { }`, adicione `packaging { resources { excludes += ['/META-INF/{AL2.0,LGPL2.1}'] } }`. |
-| `ClassNotFoundException: com.estudos.metadisplay...` | O `.aar` não está em `Plugins/Android` ou o R8 removeu a classe. Confira o `consumer-rules.pro` dentro do `.aar`. |
-| `NoClassDefFoundError: com/meta/wearable/...` | Faltam as linhas `implementation 'com.meta.wearable:...'` no `mainTemplate.gradle`. |
-| Registro não volta para o app | Confira o `<intent-filter>` com `android:scheme` na activity correta (GameActivity ou Activity). |
-| `DAT_APP_ON_THE_GLASSES_UPDATE_REQUIRED` | Use o botão "Atualizar app DAT nos óculos" (`Wearables.openDATGlassesAppUpdate`). |
-| Firmware abaixo de V128 | `Wearables.openFirmwareUpdate(activity)` (já exposto na ponte como `openFirmwareUpdate`). |
-| `CAPABILITY_DENIED` | Dev Mode desligado, app DAT não instalado nos óculos ou recusa do dispositivo. Reinstale o DAT pelo Meta AI com os óculos no rosto. |
-| Sessão não sai de `STARTING` | Os óculos não estão no rosto, não estão conectados ao Meta AI ou não têm display. |
+| `checkDebugAarMetadata`: *requires compileSdk 35* / *AGP 8.6.0* | Old Unity or Target API < 35. Use Unity 6.3 LTS (or 6000.0.45f1+) and Target API 35/36. |
+| `2 files found with path 'lib/arm64-v8a/libc++_shared.so'` | `fbjni` (from the SDK) and IL2CPP both ship it. Add the `pickFirsts` from section 6.3 to `launcherTemplate.gradle`. |
+| `Duplicate class kotlin.*` or `kotlinx.*` | Another Unity plugin ships an old Kotlin stdlib as a `.jar`. Remove the `.jar` or let Gradle resolve a single version. |
+| `2 files found with path 'META-INF/...'` | In `launcherTemplate.gradle`, inside `android { }`, add `packaging { resources { excludes += ['/META-INF/{AL2.0,LGPL2.1}'] } }`. |
+| `ClassNotFoundException: com.example.metadisplay...` | The `.aar` is not in `Plugins/Android` or R8 removed the class. Check the `consumer-rules.pro` inside the `.aar`. |
+| `NoClassDefFoundError: com/meta/wearable/...` | The `implementation 'com.meta.wearable:...'` lines are missing from `mainTemplate.gradle`. |
+| Registration does not return to the app | Check the `<intent-filter>` with `android:scheme` on the right activity (GameActivity or Activity). |
+| `DAT_APP_ON_THE_GLASSES_UPDATE_REQUIRED` | Use the "Update the DAT app on the glasses" button (`Wearables.openDATGlassesAppUpdate`). |
+| Firmware below V128 | `Wearables.openFirmwareUpdate(activity)` (already exposed in the bridge as `openFirmwareUpdate`). |
+| `CAPABILITY_DENIED` | Dev Mode off, DAT app not installed on the glasses or the device refused. Reinstall DAT through Meta AI while wearing the glasses. |
+| Session stuck at `STARTING` | The glasses are not on your face, not connected to Meta AI, or have no display. |
 
 ---
 
-## 10. Testar sem os óculos (opcional)
+## 10. Testing without the glasses (optional)
 
-O SDK tem o **Mock Device Kit** (`com.meta.wearable:mwdat-mockdevice`). O sample `DisplayAccess` usa esse kit para um *phone preview* e um *Chrome preview*:
+The SDK has the **Mock Device Kit** (`com.meta.wearable:mwdat-mockdevice`). The `DisplayAccess` sample uses it for a *phone preview* and a *Chrome preview*:
 
 - `MockDeviceKit.getInstance(context).enable()`
-- `pairGlasses(GlassesModel.META_RAYBAN_DISPLAY)`, depois `powerOn()` e `don()`
-- `startTestServer(9000)`, depois `adb forward tcp:9000 tcp:9000`, e abra `http://127.0.0.1:9000/` no Chrome do PC
+- `pairGlasses(GlassesModel.META_RAYBAN_DISPLAY)`, then `powerOn()` and `don()`
+- `startTestServer(9000)`, then `adb forward tcp:9000 tcp:9000`, and open `http://127.0.0.1:9000/` in Chrome on the PC
 
-Desde o SDK 1.0.0, o CHANGELOG também lista:
+Since SDK 1.0.0, the CHANGELOG also lists:
 
-- **`MockDisplayKit`**: renderiza a sessão de Display no próprio celular. `createPreviewView(context)` cria a view de preview e `sendClick(identifier)` simula toques.
-- **`simulateRegistrationOutcome(Boolean)`**: simula o resultado do registro no Meta AI, sem precisar dos óculos.
+- **`MockDisplayKit`**: renders the Display session on the phone itself. `createPreviewView(context)` creates the preview view and `sendClick(identifier)` simulates taps.
+- **`simulateRegistrationOutcome(Boolean)`**: simulates the Meta AI registration result, without the glasses.
 
-Para usar isso no Unity, adicione a dependência `mwdat-mockdevice` no módulo e no `mainTemplate.gradle` e exponha um método `enableMock()` na ponte, copiando a lógica do `WearablesRepository.kt` do sample. Ainda não testei esse fluxo junto com o Unity.
+To use this from Unity, add the `mwdat-mockdevice` dependency to the module and to `mainTemplate.gradle` and expose an `enableMock()` method in the bridge, copying the logic from the sample's `WearablesRepository.kt`. (The toolkit in this repository already does this through `MetaMockDevice`.)
 
-Outro sample do repositório, o **BirdSpotter**, é um app "de verdade" estendido para os óculos. Ele usa cards no display, inputs, IMU e fala, e roda inteiro no MockDeviceKit. É uma boa referência de como organizar um app maior.
-
----
-
-## 11. Próximos passos
-
-- **Inputs, voz e sensores:** o DAT também oferece eventos de navegação, reconhecimento de fala, áudio e IMU. É o mesmo padrão: expor na ponte e enviar eventos para o C#.
-- **Vídeo:** criar `VideoPlayer(VideoSource.Url(...), VideoCodec.MP4)`, enviar como raiz com `sendContent { video(player) }` e chamar `play()` quando o envio der certo.
-- **Registro iniciado pelo Meta AI:** o SDK 1.0+ permite que o Meta AI inicie o registro. Para isso, `Wearables.handleIntent(intent, ...)` precisa ser chamado no `onCreate` e no `onNewIntent` da activity. No Unity, isso exige uma activity própria que estenda `UnityPlayerGameActivity`.
-- **Publicação:** trocar os `0` por `APPLICATION_ID` e `CLIENT_TOKEN` reais do Wearables Developer Center e configurar *release channels*.
+Another sample in the repository, **BirdSpotter**, is a "real" app extended to the glasses. It uses display cards, inputs, IMU and speech, and runs entirely on MockDeviceKit. It is a good reference on how to organize a larger app.
 
 ---
 
-## Fontes
+## 11. Next steps
+
+- **Inputs, voice and sensors:** DAT also offers navigation events, speech recognition, audio and IMU. Same pattern: expose them in the bridge and send events to C#.
+- **Video:** create `VideoPlayer(VideoSource.Url(...), VideoCodec.MP4)`, send it as the root with `sendContent { video(player) }` and call `play()` when the send succeeds.
+- **Registration started by Meta AI:** SDK 1.0+ lets Meta AI start the registration. For that, `Wearables.handleIntent(intent, ...)` must be called in the activity's `onCreate` and `onNewIntent`. In Unity, this requires a custom activity extending `UnityPlayerGameActivity`.
+- **Publishing:** replace the `0`s with the real `APPLICATION_ID` and `CLIENT_TOKEN` from the Wearables Developer Center and set up *release channels*.
+
+---
+
+## Sources
 
 - [Display – Android (DAT)](https://wearables.developer.meta.com/docs/develop/dat/display-android)
-- [Display overview / requisitos](https://wearables.developer.meta.com/docs/develop/dat/display-overview)
-- [Integração Android (manifest, registro, sessão)](https://wearables.developer.meta.com/docs/develop/dat/build-integration-android)
+- [Display overview / requirements](https://wearables.developer.meta.com/docs/develop/dat/display-overview)
+- [Android integration (manifest, registration, session)](https://wearables.developer.meta.com/docs/develop/dat/build-integration-android)
 - [Setup / Developer Mode](https://wearables.developer.meta.com/docs/develop/dat/getting-started-toolkit/)
 - [Version Dependencies](https://wearables.developer.meta.com/docs/develop/dat/version-dependencies)
-- [Visão geral do DAT](https://wearables.developer.meta.com/docs/develop/dat/build-overview)
-- [Streaming da câmera (resolução, fps, Bluetooth Classic)](https://wearables.developer.meta.com/docs/develop/dat/streaming)
-- [Processamento do frame da câmera (HEVC, estabilização)](https://wearables.developer.meta.com/docs/develop/dat/camera-stream-processing)
-- [Microfones e alto-falantes (HFP/A2DP)](https://wearables.developer.meta.com/docs/develop/dat/microphones-and-speakers)
+- [DAT overview](https://wearables.developer.meta.com/docs/develop/dat/build-overview)
+- [Camera streaming (resolution, fps, Bluetooth Classic)](https://wearables.developer.meta.com/docs/develop/dat/streaming)
+- [Camera frame processing (HEVC, stabilization)](https://wearables.developer.meta.com/docs/develop/dat/camera-stream-processing)
+- [Microphones and speakers (HFP/A2DP)](https://wearables.developer.meta.com/docs/develop/dat/microphones-and-speakers)
 - [Motion (IMU)](https://wearables.developer.meta.com/docs/develop/dat/motion)
-- [Web Apps: sensores e localização](https://wearables.developer.meta.com/docs/develop/webapps/build/sensors-and-location/)
-- [Referência da API Android](https://wearables.developer.meta.com/docs/reference/android/dat/latest)
-- [Repositório oficial + sample DisplayAccess](https://github.com/meta/meta-wearables-dat-android/tree/main/samples/DisplayAccess)
+- [Web Apps: sensors and location](https://wearables.developer.meta.com/docs/develop/webapps/build/sensors-and-location/)
+- [Android API reference](https://wearables.developer.meta.com/docs/reference/android/dat/latest)
+- [Official repository + DisplayAccess sample](https://github.com/meta/meta-wearables-dat-android/tree/main/samples/DisplayAccess)
 - [Maven Central: com.meta.wearable](https://central.sonatype.com/artifact/com.meta.wearable/mwdat-core/versions)
-- [Unity 6.3: compatibilidade Gradle/AGP](https://docs.unity.com/en-us/engine/6000.3/manual/platform-specific/android/introducing/gradle-overview/version-compatibility)
-- [Unity 6.0: compatibilidade Gradle/AGP](https://docs.unity3d.com/6000.0/Documentation/Manual/android-gradle-version-compatibility.html)
+- [Unity 6.3: Gradle/AGP compatibility](https://docs.unity.com/en-us/engine/6000.3/manual/platform-specific/android/introducing/gradle-overview/version-compatibility)
+- [Unity 6.0: Gradle/AGP compatibility](https://docs.unity3d.com/6000.0/Documentation/Manual/android-gradle-version-compatibility.html)

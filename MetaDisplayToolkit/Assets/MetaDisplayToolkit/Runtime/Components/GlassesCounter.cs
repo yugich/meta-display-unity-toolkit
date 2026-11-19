@@ -6,15 +6,15 @@ using UnityEngine.UI;
 namespace MetaDisplay
 {
     /// <summary>
-    /// Exemplo de estado dinâmico: escreve um número num texto e reenvia a tela dos óculos.
-    /// Ligue um botão ao <see cref="Increment"/> pelo OnClick.
+    /// Dynamic state example: writes a number into a text and re-sends the glasses screen.
+    /// Hook a button's OnClick to <see cref="Increment"/>.
     /// </summary>
-    [AddComponentMenu("Meta Display/Exemplo - Contador")]
+    [AddComponentMenu("Meta Display/Example - Counter")]
     public class GlassesCounter : MonoBehaviour
     {
-        [Tooltip("Objeto com TextMeshPro ou Text.")]
+        [Tooltip("Object with a TextMeshPro or Text.")]
         public GameObject target;
-        public string format = "Toques: {0}";
+        public string format = "Taps: {0}";
         public int value;
 
         void Start() => Write();

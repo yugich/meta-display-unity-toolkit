@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace MetaDisplay
 {
-    // ───────────────────────── Estados ─────────────────────────
+    // ───────────────────────── States ─────────────────────────
 
     public enum RegistrationState { Unknown, Unavailable, Available, Registering, Registered, Unregistering }
 
@@ -25,15 +25,15 @@ namespace MetaDisplay
 
     public enum VoiceInvocationState { Stopped, Starting, Started }
 
-    // ───────────────────────── Dispositivo ─────────────────────────
+    // ───────────────────────── Device ─────────────────────────
 
     public enum DeviceSelection
     {
-        [Tooltip("Primeiros óculos conectados que tenham display (Meta Ray-Ban Display).")]
+        [Tooltip("First connected glasses that have a display (Meta Ray-Ban Display).")]
         DisplayCapable,
-        [Tooltip("Qualquer óculos Meta conectado.")]
+        [Tooltip("Any connected Meta glasses.")]
         Any,
-        [Tooltip("Um dispositivo específico (informe o id).")]
+        [Tooltip("A specific device (provide its id).")]
         Specific,
     }
 
@@ -55,7 +55,7 @@ namespace MetaDisplay
 
     public enum PermissionResult { Unknown, Granted, Denied, Error }
 
-    // ───────────────────────── Display (UI dos óculos) ─────────────────────────
+    // ───────────────────────── Display (glasses UI) ─────────────────────────
 
     public enum GlassesDirection { Column, Row, ColumnReverse, RowReverse }
 
@@ -77,7 +77,7 @@ namespace MetaDisplay
 
     public enum GlassesButtonGroupAlignment { Start, Center, End }
 
-    // ───────────────────────── Câmera / sensores ─────────────────────────
+    // ───────────────────────── Camera / sensors ─────────────────────────
 
     public enum CameraQuality
     {
@@ -94,7 +94,7 @@ namespace MetaDisplay
 
     public enum PhotoQuality { Low, Medium, High }
 
-    /// <summary>Layout do YUV 4:2:0 recebido. Auto detecta planar vs. semi-planar.</summary>
+    /// <summary>Layout of the received YUV 4:2:0 frames. Auto detects planar vs. semi-planar.</summary>
     public enum YuvLayout { Auto = 0, I420 = 1, NV12 = 2, NV21 = 3 }
 
     public enum MotionRate { Hz5 = 5, Hz10 = 10, Hz15 = 15, Hz24 = 24, Hz30 = 30, Hz60 = 60 }
@@ -111,9 +111,9 @@ namespace MetaDisplay
 
     public enum DragAction { Down, Move, Up }
 
-    // ───────────────────────── Dados ─────────────────────────
+    // ───────────────────────── Data ─────────────────────────
 
-    /// <summary>Metadados de um óculos conhecido pelo app Meta AI.</summary>
+    /// <summary>Metadata of glasses known to the Meta AI app.</summary>
     [Serializable]
     public class DeviceInfo
     {
@@ -140,15 +140,15 @@ namespace MetaDisplay
         public bool IsConnected => Link == LinkState.Connected;
 
         public override string ToString() =>
-            $"{name} ({type}) {linkState} bateria={battery}% display={displayCapable} {compatibility}";
+            $"{name} ({type}) {linkState} battery={battery}% display={displayCapable} {compatibility}";
     }
 
-    /// <summary>Erro reportado pelo SDK ou pela ponte.</summary>
+    /// <summary>Error reported by the SDK or by the bridge.</summary>
     public readonly struct MetaError
     {
-        /// <summary>Área: session, display, camera, motion, inputs, speech, voice, registration, permission, mock, bridge.</summary>
+        /// <summary>Area: session, display, camera, motion, inputs, speech, voice, registration, permission, mock, bridge.</summary>
         public readonly string Source;
-        /// <summary>Código do SDK (ex.: DAT_APP_ON_THE_GLASSES_UPDATE_REQUIRED, PERMISSION_DENIED).</summary>
+        /// <summary>SDK code (e.g. DAT_APP_ON_THE_GLASSES_UPDATE_REQUIRED, PERMISSION_DENIED).</summary>
         public readonly string Code;
         public readonly string Message;
 
@@ -162,23 +162,23 @@ namespace MetaDisplay
         public override string ToString() => $"[{Source}] {Code}: {Message}";
     }
 
-    /// <summary>Uma amostra de IMU. Campos ausentes vêm com Has* = false.</summary>
+    /// <summary>One IMU sample. Missing readings come with Has* = false.</summary>
     public struct MotionSample
     {
         public long TimestampNs;
         public MotionSource Source;
         public bool HasAccelerometer, HasGyroscope, HasMagnetometer, HasOrientation;
-        /// <summary>m/s² (inclui a gravidade).</summary>
+        /// <summary>m/s² (includes gravity).</summary>
         public Vector3 Accelerometer;
         /// <summary>rad/s.</summary>
         public Vector3 Gyroscope;
         /// <summary>µT.</summary>
         public Vector3 Magnetometer;
-        /// <summary>Orientação fundida, no sistema de eixos do dispositivo (x, y, z, w como recebido).</summary>
+        /// <summary>Fused orientation, in the device axis system (x, y, z, w as received).</summary>
         public Quaternion Orientation;
     }
 
-    /// <summary>Evento de input vindo dos óculos ou da Neural Band.</summary>
+    /// <summary>Input event from the glasses or the Neural Band.</summary>
     public struct GlassesInputEvent
     {
         public InputKind Kind;
@@ -206,13 +206,13 @@ namespace MetaDisplay
     {
         public string Text;
         public bool IsFinal;
-        /// <summary>0..1, ou -1 quando indisponível.</summary>
+        /// <summary>0..1, or -1 when unavailable.</summary>
         public float Confidence;
     }
 
-    // ───────────────────────── Conversão de enums ─────────────────────────
+    // ───────────────────────── Enum conversion ─────────────────────────
 
-    /// <summary>Converte entre os nomes do SDK (UPPER_SNAKE) e os enums C# (PascalCase).</summary>
+    /// <summary>Converts between SDK names (UPPER_SNAKE) and C# enums (PascalCase).</summary>
     public static class MetaEnum
     {
         static readonly Dictionary<Enum, string> s_ToSdk = new Dictionary<Enum, string>();

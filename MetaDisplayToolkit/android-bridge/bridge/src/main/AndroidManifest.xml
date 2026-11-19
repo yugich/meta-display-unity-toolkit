@@ -6,10 +6,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application>
-        <!-- Activity invisível que pede permissões do DAT (câmera/microfone) via app Meta AI.
-             Funciona com qualquer Application Entry Point do Unity (Activity ou GameActivity). -->
+        <!-- Invisible Activity that requests DAT permissions (camera/microphone) through the Meta AI app.
+             Works with any Unity Application Entry Point (Activity or GameActivity). -->
         <activity
-            android:name="com.estudos.metadisplay.PermissionRequestActivity"
+            android:name="com.metadisplay.bridge.PermissionRequestActivity"
             android:exported="false"
             android:excludeFromRecents="true"
             android:noHistory="false"

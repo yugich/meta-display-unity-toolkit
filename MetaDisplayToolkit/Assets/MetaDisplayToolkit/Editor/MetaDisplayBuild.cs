@@ -10,29 +10,29 @@ using UnityEngine;
 
 namespace MetaDisplay.Editor
 {
-    /// <summary>Configurações do toolkit, salvas em ProjectSettings/MetaDisplaySettings.json.</summary>
+    /// <summary>Toolkit settings, saved in ProjectSettings/MetaDisplaySettings.json.</summary>
     [Serializable]
     public class MetaDisplaySettings
     {
         const string FilePath = "ProjectSettings/MetaDisplaySettings.json";
 
-        [Tooltip("Versão do Meta Wearables Device Access Toolkit no Maven Central.")]
+        [Tooltip("Meta Wearables Device Access Toolkit version on Maven Central.")]
         public string sdkVersion = "1.0.1";
-        [Tooltip("Developer Mode: 0. Produção: valor do Wearables Developer Center.")]
+        [Tooltip("Developer Mode: 0. Production: value from the Wearables Developer Center.")]
         public string applicationId = "0";
-        [Tooltip("Developer Mode: 0. Produção: valor do Wearables Developer Center.")]
+        [Tooltip("Developer Mode: 0. Production: value from the Wearables Developer Center.")]
         public string clientToken = "0";
-        [Tooltip("Esquema de URL que o Meta AI usa para voltar ao app. Vazio = gerado a partir do package name.")]
+        [Tooltip("URL scheme Meta AI uses to return to the app. Empty = generated from the package name.")]
         public string callbackScheme = "";
-        [Tooltip("Desliga a coleta de dados de uso do SDK pela Meta.")]
+        [Tooltip("Turns off the SDK usage data collection by Meta.")]
         public bool analyticsOptOut;
         public bool includeCamera = true;
         public bool includeInputs = true;
         public bool includeMotion = true;
         public bool includeSpeech = true;
-        [Tooltip("Óculos simulados. Desmarque no build de produção para um APK menor.")]
+        [Tooltip("Simulated glasses. Uncheck for production builds to get a smaller APK.")]
         public bool includeMockDevice = true;
-        [Tooltip("Injeta dependências e manifest automaticamente no build Android.")]
+        [Tooltip("Injects dependencies and manifest entries automatically into the Android build.")]
         public bool injectBuildConfig = true;
 
         static MetaDisplaySettings s_Cached;
@@ -47,7 +47,7 @@ namespace MetaDisplay.Editor
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[MetaDisplay] Não foi possível ler " + FilePath + ": " + e.Message);
+                Debug.LogWarning("[MetaDisplay] Could not read " + FilePath + ": " + e.Message);
             }
             return s_Cached;
         }
@@ -59,7 +59,7 @@ namespace MetaDisplay.Editor
             get
             {
                 if (!string.IsNullOrWhiteSpace(callbackScheme)) return callbackScheme.Trim().ToLowerInvariant();
-                // Esquema = package name (letras, dígitos e pontos são válidos em esquemas de URI).
+                // Scheme = package name (letters, digits and dots are valid in URI schemes).
                 var id = PlayerSettings.GetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Android);
                 var clean = Regex.Replace((id ?? "").ToLowerInvariant(), "[^a-z0-9.]", "").Trim('.');
                 return string.IsNullOrEmpty(clean) || !char.IsLetter(clean[0]) ? "mwdat.unityapp" : clean;
@@ -79,9 +79,9 @@ namespace MetaDisplay.Editor
     }
 
     /// <summary>
-    /// Depois que o Unity gera o projeto Gradle: adiciona as dependências do DAT (Maven Central),
-    /// as permissões/meta-data do manifest e o esquema de callback do Meta AI na Activity do Unity.
-    /// Dispensa editar mainTemplate.gradle e AndroidManifest.xml à mão.
+    /// After Unity generates the Gradle project: adds the DAT dependencies (Maven Central), the
+    /// manifest permissions/meta-data and the Meta AI callback scheme on the Unity Activity.
+    /// No need to edit mainTemplate.gradle or AndroidManifest.xml by hand.
     /// </summary>
     public class MetaDisplayGradlePostProcessor : IPostGenerateGradleAndroidProject
     {
@@ -101,11 +101,11 @@ namespace MetaDisplay.Editor
                 PatchLauncherGradle(Path.Combine(unityLibraryPath, "..", "launcher"));
                 PatchGradleProperties(Path.Combine(unityLibraryPath, "..", "gradle.properties"));
                 PatchManifests(unityLibraryPath, settings);
-                Debug.Log($"[MetaDisplay] Build configurado: DAT {settings.sdkVersion} ({string.Join(", ", settings.Artifacts())}), esquema '{settings.EffectiveScheme}'.");
+                Debug.Log($"[MetaDisplay] Build configured: DAT {settings.sdkVersion} ({string.Join(", ", settings.Artifacts())}), scheme '{settings.EffectiveScheme}'.");
             }
             catch (Exception e)
             {
-                Debug.LogError("[MetaDisplay] Falha ao configurar o projeto Gradle: " + e);
+                Debug.LogError("[MetaDisplay] Failed to configure the Gradle project: " + e);
                 throw;
             }
         }
@@ -114,14 +114,14 @@ namespace MetaDisplay.Editor
         {
             var path = Path.Combine(unityLibraryPath, "build.gradle");
             if (!File.Exists(path)) path = Path.Combine(unityLibraryPath, "build.gradle.kts");
-            if (!File.Exists(path)) throw new FileNotFoundException("build.gradle do unityLibrary não encontrado", path);
+            if (!File.Exists(path)) throw new FileNotFoundException("unityLibrary build.gradle not found", path);
             bool kts = path.EndsWith(".kts", StringComparison.Ordinal);
 
             var text = File.ReadAllText(path);
             text = Regex.Replace(text, Regex.Escape(BeginMarker) + ".*?" + Regex.Escape(EndMarker) + @"\r?\n?", "", RegexOptions.Singleline);
 
             var sb = new StringBuilder();
-            sb.AppendLine().AppendLine(BeginMarker + " (gerado automaticamente; não edite)");
+            sb.AppendLine().AppendLine(BeginMarker + " (generated automatically; do not edit)");
             sb.AppendLine("dependencies {");
             foreach (var artifact in settings.Artifacts())
             {
@@ -134,9 +134,9 @@ namespace MetaDisplay.Editor
         }
 
         /// <summary>
-        /// O fbjni (dependência do SDK da Meta) e o IL2CPP do Unity trazem libc++_shared.so: sem pickFirst o
-        /// merge de bibliotecas nativas falha com "2 files found with path 'lib/arm64-v8a/libc++_shared.so'".
-        /// O do Unity vem primeiro (e é o mais novo; a libc++ é retrocompatível).
+        /// fbjni (a dependency of the Meta SDK) and Unity's IL2CPP both ship libc++_shared.so: without pickFirst
+        /// the native library merge fails with "2 files found with path 'lib/arm64-v8a/libc++_shared.so'".
+        /// Unity's copy comes first (and is the newest; libc++ is backward compatible).
         /// </summary>
         static void PatchLauncherGradle(string launcherPath)
         {
@@ -149,13 +149,13 @@ namespace MetaDisplay.Editor
             }
             if (!File.Exists(path))
             {
-                Debug.LogWarning("[MetaDisplay] launcher/build.gradle não encontrado; se o build reclamar de libc++_shared.so, adicione pickFirsts manualmente.");
+                Debug.LogWarning("[MetaDisplay] launcher/build.gradle not found; if the build complains about libc++_shared.so, add pickFirsts manually.");
                 return;
             }
             var text = File.ReadAllText(path);
             text = Regex.Replace(text, Regex.Escape(BeginMarker) + ".*?" + Regex.Escape(EndMarker) + @"\r?\n?", "", RegexOptions.Singleline);
             var sb = new StringBuilder();
-            sb.AppendLine().AppendLine(BeginMarker + " (gerado automaticamente; não edite)");
+            sb.AppendLine().AppendLine(BeginMarker + " (generated automatically; do not edit)");
             if (kts)
             {
                 sb.AppendLine("android {");
@@ -193,10 +193,10 @@ namespace MetaDisplay.Editor
             bool activityPatched = PatchManifest(libManifest, settings, true);
             if (!activityPatched && File.Exists(launcherManifest)) activityPatched = PatchManifest(launcherManifest, settings, false);
             if (!activityPatched)
-                Debug.LogWarning("[MetaDisplay] Não achei a Activity principal do Unity para o esquema de callback. O registro iniciado pelo app pode não voltar sozinho.");
+                Debug.LogWarning("[MetaDisplay] Could not find the main Unity Activity for the callback scheme. App-initiated registration may not return on its own.");
         }
 
-        /// <returns>True se encontrou e configurou a Activity principal.</returns>
+        /// <returns>True if the main Activity was found and configured.</returns>
         static bool PatchManifest(string path, MetaDisplaySettings settings, bool addApplicationEntries)
         {
             if (!File.Exists(path)) return false;
@@ -241,7 +241,7 @@ namespace MetaDisplay.Editor
             return true;
         }
 
-        /// <summary>Salva em UTF-8 sem BOM.</summary>
+        /// <summary>Saves as UTF-8 without BOM.</summary>
         static void Save(XmlDocument doc, string path)
         {
             var settings = new XmlWriterSettings { Encoding = new UTF8Encoding(false), Indent = true };
@@ -282,7 +282,7 @@ namespace MetaDisplay.Editor
             SetAndroid(existing, "value", string.IsNullOrEmpty(value) ? "0" : value);
         }
 
-        /// <summary>Atributo android:xxx com o prefixo explícito (evita prefixos gerados como d1p1).</summary>
+        /// <summary>android:xxx attribute with the explicit prefix (avoids generated prefixes such as d1p1).</summary>
         static void SetAndroid(XmlElement element, string localName, string value)
         {
             var attr = element.GetAttributeNode(localName, AndroidNs);

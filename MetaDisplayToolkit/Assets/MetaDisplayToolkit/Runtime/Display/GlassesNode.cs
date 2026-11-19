@@ -7,15 +7,15 @@ using UnityEngine;
 namespace MetaDisplay
 {
     /// <summary>
-    /// Nó da UI dos óculos. Espelha o DSL do mwdat-display: flexBox, text, image, button, icon e buttonGroup.
-    /// Monte com <see cref="Glasses"/> (código) ou desenhe num Canvas com <c>GlassesScreen</c>.
+    /// Glasses UI node. Mirrors the mwdat-display DSL: flexBox, text, image, button, icon and buttonGroup.
+    /// Build it with <see cref="Glasses"/> (code) or draw it on a Canvas with <c>GlassesScreen</c>.
     /// </summary>
     public abstract class GlassesNode
     {
-        /// <summary>Quanto o nó cresce para ocupar espaço livre (como CSS flex-grow).</summary>
+        /// <summary>How much the node grows to fill free space (like CSS flex-grow).</summary>
         public float FlexGrow;
         public float FlexShrink;
-        /// <summary>Sobrescreve o alinhamento no eixo cruzado do pai.</summary>
+        /// <summary>Overrides the cross-axis alignment of the parent.</summary>
         public GlassesAlignment? AlignSelf;
 
         internal abstract string Type { get; }
@@ -28,7 +28,7 @@ namespace MetaDisplay
             if (AlignSelf.HasValue) w.Prop("alignSelf", MetaEnum.ToSdk(AlignSelf.Value));
         }
 
-        /// <summary>Atalho fluente para FlexGrow.</summary>
+        /// <summary>Fluent shortcut for FlexGrow.</summary>
         public GlassesNode Grow(float grow = 1f)
         {
             FlexGrow = grow;
@@ -36,7 +36,7 @@ namespace MetaDisplay
         }
     }
 
-    /// <summary>Container flexbox (único tipo permitido na raiz).</summary>
+    /// <summary>Flexbox container (the only type allowed at the root).</summary>
     public sealed class FlexNode : GlassesNode
     {
         public GlassesDirection Direction = GlassesDirection.Column;
@@ -47,7 +47,7 @@ namespace MetaDisplay
         public int Padding;
         public int? PaddingTop, PaddingBottom, PaddingStart, PaddingEnd;
         public GlassesBackground Background = GlassesBackground.None;
-        /// <summary>Torna o container inteiro clicável.</summary>
+        /// <summary>Makes the whole container clickable.</summary>
         public Action OnClick;
         public readonly List<GlassesNode> Children = new List<GlassesNode>();
 
@@ -111,17 +111,17 @@ namespace MetaDisplay
         }
     }
 
-    /// <summary>Imagem por URL HTTPS ou por textura/sprite do Unity (enviada como PNG uma única vez).</summary>
+    /// <summary>Image from an HTTPS URL or from a Unity texture/sprite (sent as PNG only once).</summary>
     public sealed class ImageNode : GlassesNode
     {
         public string Url;
         public Texture Texture;
         public Sprite Sprite;
-        /// <summary>Chave de uma imagem já registrada com <see cref="MetaGlassesDisplay.RegisterImage(string, byte[], int)"/>.</summary>
+        /// <summary>Key of an image already registered with <see cref="MetaGlassesDisplay.RegisterImage(string, byte[], int)"/>.</summary>
         public string ImageKey;
         public GlassesImageSize Size = GlassesImageSize.Fill;
         public GlassesCornerRadius CornerRadius = GlassesCornerRadius.None;
-        /// <summary>Maior lado, em pixels, ao enviar a textura (o display tem 600x600).</summary>
+        /// <summary>Largest side, in pixels, when sending the texture (the display is 600x600).</summary>
         public int MaxSize = 0;
 
         internal override string Type => "image";
@@ -148,7 +148,7 @@ namespace MetaDisplay
         public GlassesButtonStyle Style = GlassesButtonStyle.Primary;
         public GlassesIconName? Icon;
         public Action OnClick;
-        /// <summary>A primeira ação "primária" recebe o foco quando a tela aparece.</summary>
+        /// <summary>The first "primary" action gets the focus when the screen appears.</summary>
         public bool Primary;
 
         internal override string Type => "button";
@@ -185,7 +185,7 @@ namespace MetaDisplay
         }
     }
 
-    /// <summary>Grupo de botões com o espaçamento padrão do sistema dos óculos.</summary>
+    /// <summary>Group of buttons with the glasses system's default spacing.</summary>
     public sealed class ButtonGroupNode : GlassesNode
     {
         public GlassesButtonGroupAlignment Alignment = GlassesButtonGroupAlignment.Center;
@@ -216,12 +216,12 @@ namespace MetaDisplay
     }
 
     /// <summary>
-    /// Atalhos para montar telas por código:
+    /// Shortcuts to build screens in code:
     /// <code>
     /// MetaGlassesDisplay.Show(
     ///     Glasses.Column(gap: 12, padding: 24).Add(
-    ///         Glasses.Text("Olá!", GlassesTextStyle.Heading),
-    ///         Glasses.Button("OK", () => Debug.Log("toque"), icon: GlassesIconName.Checkmark, primary: true)));
+    ///         Glasses.Text("Hello!", GlassesTextStyle.Heading),
+    ///         Glasses.Button("OK", () => Debug.Log("tap"), icon: GlassesIconName.Checkmark, primary: true)));
     /// </code>
     /// </summary>
     public static class Glasses
@@ -234,7 +234,7 @@ namespace MetaDisplay
             GlassesAlignment alignment = GlassesAlignment.Start, GlassesAlignment crossAlignment = GlassesAlignment.Center, Action onClick = null) =>
             new FlexNode { Direction = GlassesDirection.Row, Gap = gap, Padding = padding, Background = background, Alignment = alignment, CrossAlignment = crossAlignment, OnClick = onClick };
 
-        /// <summary>Container com fundo de cartão.</summary>
+        /// <summary>Container with a card background.</summary>
         public static FlexNode Card(int gap = 8, int padding = 24, Action onClick = null) =>
             Column(gap, padding, GlassesBackground.Card, onClick: onClick);
 
@@ -258,21 +258,21 @@ namespace MetaDisplay
         public static ImageNode Image(Sprite sprite, GlassesImageSize size = GlassesImageSize.Fill, GlassesCornerRadius corner = GlassesCornerRadius.Medium) =>
             new ImageNode { Sprite = sprite, Size = size, CornerRadius = corner };
 
-        /// <summary>Imagem por URL HTTPS (os óculos/SDK baixam a imagem).</summary>
+        /// <summary>Image from an HTTPS URL (the glasses/SDK download the image).</summary>
         public static ImageNode ImageUrl(string url, GlassesImageSize size = GlassesImageSize.Fill, GlassesCornerRadius corner = GlassesCornerRadius.Medium) =>
             new ImageNode { Url = url, Size = size, CornerRadius = corner };
 
         public static ButtonGroupNode ButtonGroup(params ButtonNode[] buttons) => new ButtonGroupNode().Add(buttons);
 
-        /// <summary>Espaço flexível que empurra os próximos itens para o fim.</summary>
+        /// <summary>Flexible space that pushes the following items to the end.</summary>
         public static FlexNode Spacer() => new FlexNode { FlexGrow = 1 };
     }
 
-    /// <summary>Estado de um envio: ids de clique e imagens usadas.</summary>
+    /// <summary>State of one send: click ids and images used.</summary>
     internal sealed class GlassesSendContext
     {
         internal readonly Dictionary<string, Action> Clicks = new Dictionary<string, Action>();
-        /// <summary>Só gera o JSON (para comparar/depurar), sem enviar imagens.</summary>
+        /// <summary>Only builds the JSON (for comparing/debugging), without sending images.</summary>
         internal bool DryRun;
         int m_Next;
 
@@ -285,7 +285,7 @@ namespace MetaDisplay
         }
     }
 
-    /// <summary>Gerador de JSON mínimo (sem dependências).</summary>
+    /// <summary>Minimal JSON writer (no dependencies).</summary>
     internal sealed class GlassesJson
     {
         readonly StringBuilder m_Sb = new StringBuilder(1024);
@@ -379,7 +379,7 @@ namespace MetaDisplay
 
         public override string ToString() => m_Sb.ToString();
 
-        /// <summary>Serializa a árvore. A raiz precisa ser um <see cref="FlexNode"/>.</summary>
+        /// <summary>Serializes the tree. The root must be a <see cref="FlexNode"/>.</summary>
         internal static string Serialize(GlassesNode root, GlassesSendContext ctx)
         {
             var flex = root as FlexNode ?? new FlexNode().Add(root);

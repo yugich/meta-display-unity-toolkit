@@ -8,19 +8,19 @@ using UnityEngine.UI;
 namespace MetaDisplay
 {
     /// <summary>
-    /// Converte a hierarquia de um <see cref="GlassesScreen"/> em <see cref="GlassesNode"/>.
-    /// Regras (por objeto, na ordem da hierarquia):
-    ///  - GlassesIgnore: ignorado (com filhos).
-    ///  - GlassesButtonGroup: grupo com os botões filhos.
-    ///  - GlassesButton ou UI.Button: botão (texto = primeiro texto filho).
-    ///  - GlassesText, TextMeshPro ou Text: texto (estilo deduzido do tamanho da fonte se não houver GlassesText).
-    ///  - GlassesIcon: ícone nativo.
-    ///  - GlassesImage, RawImage com textura ou Image com sprite (sem filhos): imagem.
-    ///  - GlassesFlexBox, Horizontal/Vertical/GridLayoutGroup ou objeto com filhos: container.
+    /// Converts the hierarchy of a <see cref="GlassesScreen"/> into <see cref="GlassesNode"/>.
+    /// Rules (per object, in hierarchy order):
+    ///  - GlassesIgnore: skipped (with its children).
+    ///  - GlassesButtonGroup: group with the child buttons.
+    ///  - GlassesIcon: native icon.
+    ///  - GlassesImage, RawImage with a texture or Image with a sprite (no children): image.
+    ///  - GlassesButton or UI.Button: button (label = first child text).
+    ///  - GlassesText, TextMeshPro or Text: text (style inferred from the font size if there is no GlassesText).
+    ///  - GlassesFlexBox, Horizontal/Vertical/GridLayoutGroup or object with children: container.
     /// </summary>
     public static class GlassesCanvasConverter
     {
-        /// <summary>Objetos sem componentes "Glasses*" também são convertidos (Text, Button, Image, LayoutGroup).</summary>
+        /// <summary>Objects without "Glasses*" components are converted too (Text, Button, Image, LayoutGroup).</summary>
         public static bool AutoMapStandardUI = true;
 
         static readonly Regex s_RichText = new Regex("<[^>]+>", RegexOptions.Compiled);
@@ -34,12 +34,12 @@ namespace MetaDisplay
         static GlassesNode ConvertObject(GameObject go)
         {
             if (go.GetComponent<GlassesIgnore>() != null) return null;
-            if (go.GetComponent<GlassesScreen>() != null) return null; // telas aninhadas são independentes
+            if (go.GetComponent<GlassesScreen>() != null) return null; // nested screens are independent
 
             var group = go.GetComponent<GlassesButtonGroup>();
             if (group != null) return BuildButtonGroup(group);
 
-            // Ícone e imagem antes de texto: o ícone usa um texto só para o preview no Canvas.
+            // Icon and image before text: the icon uses a text only for the Canvas preview.
             var gIcon = go.GetComponent<GlassesIcon>();
             if (gIcon != null)
             {
@@ -74,7 +74,7 @@ namespace MetaDisplay
                 var flex = BuildFlex(go);
                 bool plain = go.GetComponent<GlassesFlexBox>() == null && go.GetComponent<LayoutGroup>() == null;
                 if (flex.Children.Count == 0) return null;
-                // Container "invisível" com um único filho: dispensa o aninhamento.
+                // "Invisible" container with a single child: skip the nesting.
                 if (plain && flex.Children.Count == 1 && flex.FlexGrow == 0) return flex.Children[0];
                 return flex;
             }
@@ -163,8 +163,8 @@ namespace MetaDisplay
 
         static void MapAnchor(TextAnchor anchor, bool row, out GlassesAlignment main, out GlassesAlignment cross)
         {
-            int col = (int)anchor % 3;  // 0 esquerda, 1 centro, 2 direita
-            int line = (int)anchor / 3; // 0 cima, 1 meio, 2 baixo
+            int col = (int)anchor % 3;  // 0 left, 1 center, 2 right
+            int line = (int)anchor / 3; // 0 top, 1 middle, 2 bottom
             var horizontal = (GlassesAlignment)col;
             var vertical = (GlassesAlignment)line;
             main = row ? horizontal : vertical;
@@ -267,7 +267,7 @@ namespace MetaDisplay
             return node;
         }
 
-        /// <summary>Avisos sobre a tela (o que não vai aparecer como esperado nos óculos).</summary>
+        /// <summary>Warnings about the screen (what will not look as expected on the glasses).</summary>
         public static List<string> Validate(GlassesScreen screen)
         {
             var warnings = new List<string>();
@@ -278,21 +278,21 @@ namespace MetaDisplay
                 if (t.GetComponent<TMP_Text>() != null || t.GetComponent<Text>() != null) texts++;
                 if (t.GetComponent<Button>() != null || t.GetComponent<GlassesButton>() != null) buttons++;
                 if (t.GetComponent<Toggle>() != null || t.GetComponent<Slider>() != null || t.GetComponent<TMP_InputField>() != null || t.GetComponent<InputField>() != null || t.GetComponent<Dropdown>() != null || t.GetComponent<TMP_Dropdown>() != null || t.GetComponent<Scrollbar>() != null)
-                    warnings.Add($"'{t.name}': controle não suportado nos óculos (só texto, imagem, botão, ícone e containers). Adicione GlassesIgnore se for só do celular.");
+                    warnings.Add($"'{t.name}': control not supported on the glasses (only text, image, button, icon and containers). Add GlassesIgnore if it is phone-only.");
             }
-            if (images > 4) warnings.Add($"{images} imagens: muitas imagens deixam o envio lento pelo Bluetooth.");
-            if (buttons == 0) warnings.Add("Nenhum botão: o usuário não terá onde tocar (o Voltar com dois dedos encerra a sessão na tela raiz).");
-            if (texts == 0 && images == 0) warnings.Add("A tela não tem texto nem imagem.");
+            if (images > 4) warnings.Add($"{images} images: many images make sending slow over Bluetooth.");
+            if (buttons == 0) warnings.Add("No buttons: the user has nothing to tap (a two-finger Back ends the session on the root screen).");
+            if (texts == 0 && images == 0) warnings.Add("The screen has no text and no image.");
             var rt = (RectTransform)screen.transform;
             var size = rt.rect.size;
             if (size.x > 1 && (Mathf.Abs(size.x - 600) > 1 || Mathf.Abs(size.y - 600) > 1))
-                warnings.Add($"A área da tela é {size.x:0}x{size.y:0}. O display tem 600x600; use esse tamanho para o preview bater.");
+                warnings.Add($"The screen area is {size.x:0}x{size.y:0}. The display is 600x600; use that size so the preview matches.");
             return warnings;
         }
     }
 
 #if UNITY_EDITOR
-    /// <summary>Deixa o Canvas parecido com o resultado nos óculos (só no Editor).</summary>
+    /// <summary>Makes the Canvas look like the result on the glasses (Editor only).</summary>
     internal static class GlassesCanvasPreview
     {
         internal static readonly Color CardColor = new Color(0.16f, 0.17f, 0.19f, 0.95f);
@@ -314,13 +314,13 @@ namespace MetaDisplay
                 UnityEditor.Undo.DestroyObjectImmediate(existing);
                 existing = null;
             }
-            if (go.GetComponent<GridLayoutGroup>() != null) return; // o usuário escolheu um grid: não mexe
+            if (go.GetComponent<GridLayoutGroup>() != null) return; // the user chose a grid: leave it alone
             HorizontalOrVerticalLayoutGroup lg = existing;
             if (lg == null)
                 lg = row ? (HorizontalOrVerticalLayoutGroup)UnityEditor.Undo.AddComponent<HorizontalLayoutGroup>(go)
                          : UnityEditor.Undo.AddComponent<VerticalLayoutGroup>(go);
 
-            UnityEditor.Undo.RecordObject(lg, "Sincronizar layout dos óculos");
+            UnityEditor.Undo.RecordObject(lg, "Sync glasses layout");
             lg.spacing = fb.gap;
             lg.reverseArrangement = fb.direction == GlassesDirection.RowReverse || fb.direction == GlassesDirection.ColumnReverse;
             lg.padding = fb.perEdgePadding
@@ -343,7 +343,7 @@ namespace MetaDisplay
             if (fb.background == GlassesBackground.Card)
             {
                 if (image == null) image = UnityEditor.Undo.AddComponent<Image>(go);
-                UnityEditor.Undo.RecordObject(image, "Fundo de cartão");
+                UnityEditor.Undo.RecordObject(image, "Card background");
                 if (image.sprite == null) image.sprite = UnityEditor.AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
                 image.type = Image.Type.Sliced;
                 image.color = CardColor;
@@ -352,7 +352,7 @@ namespace MetaDisplay
             }
             else if (image != null && image.color == CardColor)
             {
-                UnityEditor.Undo.RecordObject(image, "Sem fundo");
+                UnityEditor.Undo.RecordObject(image, "No background");
                 image.enabled = false;
             }
         }
@@ -376,7 +376,7 @@ namespace MetaDisplay
             var tmp = gt.GetComponent<TMP_Text>();
             if (tmp != null)
             {
-                UnityEditor.Undo.RecordObject(tmp, "Estilo de preview");
+                UnityEditor.Undo.RecordObject(tmp, "Preview style");
                 tmp.fontSize = FontSize(gt.style);
                 tmp.fontStyle = gt.style == GlassesTextStyle.Heading ? FontStyles.Bold : FontStyles.Normal;
                 tmp.color = color;
@@ -385,7 +385,7 @@ namespace MetaDisplay
             var legacy = gt.GetComponent<Text>();
             if (legacy != null)
             {
-                UnityEditor.Undo.RecordObject(legacy, "Estilo de preview");
+                UnityEditor.Undo.RecordObject(legacy, "Preview style");
                 legacy.fontSize = Mathf.RoundToInt(FontSize(gt.style));
                 legacy.fontStyle = gt.style == GlassesTextStyle.Heading ? FontStyle.Bold : FontStyle.Normal;
                 legacy.color = color;
@@ -399,7 +399,7 @@ namespace MetaDisplay
             var image = gb.GetComponent<Image>();
             if (image != null)
             {
-                UnityEditor.Undo.RecordObject(image, "Estilo de preview");
+                UnityEditor.Undo.RecordObject(image, "Preview style");
                 image.color = gb.style == GlassesButtonStyle.Primary ? PrimaryButton
                     : gb.style == GlassesButtonStyle.Secondary ? SecondaryButton
                     : new Color(1, 1, 1, 0.08f);
@@ -408,7 +408,7 @@ namespace MetaDisplay
             var tmp = gb.GetComponentInChildren<TMP_Text>(true);
             if (tmp != null)
             {
-                UnityEditor.Undo.RecordObject(tmp, "Estilo de preview");
+                UnityEditor.Undo.RecordObject(tmp, "Preview style");
                 tmp.color = Color.white;
                 tmp.fontSize = 24;
                 if (!string.IsNullOrEmpty(gb.label)) tmp.text = gb.label;
@@ -417,7 +417,7 @@ namespace MetaDisplay
             var legacy = gb.GetComponentInChildren<Text>(true);
             if (legacy != null)
             {
-                UnityEditor.Undo.RecordObject(legacy, "Estilo de preview");
+                UnityEditor.Undo.RecordObject(legacy, "Preview style");
                 legacy.color = Color.white;
                 legacy.fontSize = 24;
                 if (!string.IsNullOrEmpty(gb.label)) legacy.text = gb.label;

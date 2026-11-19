@@ -1,5 +1,5 @@
-// Converte os frames YUV 4:2:0 da câmera dos óculos em RGB (BT.601, faixa limitada).
-// _Layout: 1 = I420 (planos Y, U, V), 2 = NV12 (Y + UV intercalado), 3 = NV21 (Y + VU intercalado).
+// Converts the glasses camera YUV 4:2:0 frames to RGB (BT.601, limited range).
+// _Layout: 1 = I420 (Y, U, V planes), 2 = NV12 (Y + interleaved UV), 3 = NV21 (Y + interleaved VU).
 Shader "Hidden/MetaDisplay/YuvToRgb"
 {
     Properties
@@ -28,7 +28,7 @@ Shader "Hidden/MetaDisplay/YuvToRgb"
 
             fixed4 frag (v2f_img i) : SV_Target
             {
-                // A linha 0 do buffer é o topo da imagem; no Unity a linha 0 é a base.
+                // Buffer row 0 is the top of the image; in Unity row 0 is the bottom.
                 float2 uv = float2(i.uv.x, 1.0 - i.uv.y);
                 float y = tex2D(_MainTex, uv).r;
                 float u;

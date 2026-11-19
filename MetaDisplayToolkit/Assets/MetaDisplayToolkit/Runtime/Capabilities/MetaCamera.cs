@@ -5,9 +5,9 @@ using UnityEngine;
 namespace MetaDisplay
 {
     /// <summary>
-    /// Câmera dos óculos: vídeo ao vivo como <see cref="Texture"/> (RenderTexture RGB atualizada a cada frame),
-    /// fotos e áudio do microfone junto com o vídeo. Pede a permissão de câmera no Meta AI automaticamente.
-    /// O vídeo vem por Bluetooth: resoluções/fps menores costumam dar imagem mais nítida.
+    /// Glasses camera: live video as <see cref="Texture"/> (RGB RenderTexture updated every frame),
+    /// photos and microphone audio alongside the video. Requests the camera permission in Meta AI automatically.
+    /// Video comes over Bluetooth: lower resolutions/fps usually give a sharper image.
     /// </summary>
     public static class MetaCamera
     {
@@ -30,26 +30,26 @@ namespace MetaDisplay
 
         public static CameraStreamState State { get; private set; } = CameraStreamState.Stopped;
         public static bool IsStreaming => State == CameraStreamState.Streaming;
-        /// <summary>Último frame em RGB (RenderTexture). Use em RawImage, material, etc.</summary>
+        /// <summary>Latest frame in RGB (RenderTexture). Use it in a RawImage, material, etc.</summary>
         public static RenderTexture Texture { get; private set; }
         public static int FrameWidth { get; private set; }
         public static int FrameHeight { get; private set; }
         public static long FramesReceived { get; private set; }
-        /// <summary>Layout YUV forçado. Auto detecta; troque para NV21 se as cores vierem trocadas (azul/laranja).</summary>
+        /// <summary>Forced YUV layout. Auto detects; switch to NV21 if colors look swapped (blue/orange).</summary>
         public static YuvLayout LayoutOverride = YuvLayout.Auto;
         public static YuvLayout DetectedLayout { get; private set; } = YuvLayout.Auto;
         public static int AudioSampleRate { get; private set; }
         public static int AudioChannels { get; private set; } = 1;
 
         public static event Action<CameraStreamState> StateChanged;
-        /// <summary>Novo frame disponível em <see cref="Texture"/>.</summary>
+        /// <summary>New frame available in <see cref="Texture"/>.</summary>
         public static event Action<RenderTexture> FrameReady;
-        /// <summary>Amostras PCM em float (-1..1), intercaladas por canal: (amostras, sampleRate, canais).</summary>
+        /// <summary>PCM samples as float (-1..1), interleaved by channel: (samples, sampleRate, channels).</summary>
         public static event Action<float[], int, int> AudioReceived;
-        /// <summary>Mensagens informativas da câmera (ex.: aguardando foto HQ, reiniciando stream sem frames).</summary>
+        /// <summary>Informational camera messages (e.g. waiting for an HQ photo, restarting a stream with no frames).</summary>
         public static event Action<string> Info;
 
-        /// <summary>Inicia o vídeo (e, opcionalmente, o áudio). Pode ser chamado antes da sessão começar.</summary>
+        /// <summary>Starts the video (and, optionally, the audio). Can be called before the session starts.</summary>
         public static void Start(CameraQuality quality = CameraQuality.Medium, CameraFps fps = CameraFps.Fps24,
             CameraAudio audio = CameraAudio.None, int audioChannels = 1)
         {
@@ -66,7 +66,7 @@ namespace MetaDisplay
             Deactivate();
         }
 
-        /// <summary>Foto rápida durante o stream ativo.</summary>
+        /// <summary>Quick photo while the stream is active.</summary>
         public static void CapturePhoto(Action<Texture2D> onPhoto, Action<MetaError> onError = null)
         {
             int id = s_NextPhoto++;
@@ -75,7 +75,7 @@ namespace MetaDisplay
         }
 
         /// <summary>
-        /// Foto standalone em alta qualidade (experimental). Pausa o stream, captura e religa.
+        /// Standalone high-quality photo (experimental). Pauses the stream, captures and resumes it.
         /// </summary>
         public static void CaptureHighQualityPhoto(Action<Texture2D> onPhoto, Action<MetaError> onError = null,
             PhotoResolution resolution = PhotoResolution.Full, PhotoQuality quality = PhotoQuality.High, Action<float> onProgress = null)
@@ -86,7 +86,7 @@ namespace MetaDisplay
             MetaNative.Call(Cls, "captureHighQualityPhoto", MetaEnum.ToSdk(resolution), MetaEnum.ToSdk(quality), id);
         }
 
-        /// <summary>Frame atual como JPEG (ex.: para mandar a uma API de visão). Null se não houver frame.</summary>
+        /// <summary>Current frame as JPEG (e.g. to send to a vision API). Null if there is no frame.</summary>
         public static byte[] GetFrameJpeg(int quality = 85) =>
             MetaNative.FromJava(MetaNative.Call<sbyte[]>(Cls, "frameAsJpeg", quality));
 
@@ -183,7 +183,7 @@ namespace MetaDisplay
                 var shader = Resources.Load<Shader>("MetaDisplay/YuvToRgb");
                 if (shader == null)
                 {
-                    Debug.LogError("[MetaDisplay] Shader Resources/MetaDisplay/YuvToRgb não encontrado.");
+                    Debug.LogError("[MetaDisplay] Shader Resources/MetaDisplay/YuvToRgb not found.");
                     return;
                 }
                 s_Material = new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
@@ -217,7 +217,7 @@ namespace MetaDisplay
             AudioReceived(samples, AudioSampleRate, AudioChannels);
         }
 
-        // ───────────── eventos ─────────────
+        // ───────────── events ─────────────
 
         internal static void Handle(string type, MetaPayload p)
         {
@@ -231,7 +231,7 @@ namespace MetaDisplay
                     MetaWearables.RaiseError(new MetaError("camera", p.error, p.message));
                     break;
                 case "camera.info":
-                    Debug.Log("[MetaDisplay] Câmera: " + p.message);
+                    Debug.Log("[MetaDisplay] Camera: " + p.message);
                     Info?.Invoke(p.message);
                     break;
                 case "camera.photoProgress":
@@ -244,7 +244,7 @@ namespace MetaDisplay
                         var bytes = MetaNative.FromJava(MetaNative.Call<sbyte[]>(Cls, "takePhoto", p.requestId));
                         var tex = new Texture2D(2, 2, TextureFormat.RGB24, false);
                         if (bytes != null && tex.LoadImage(bytes)) req.OnPhoto?.Invoke(tex);
-                        else req.OnError?.Invoke(new MetaError("camera", "DECODE_FAILED", "Não foi possível ler a foto"));
+                        else req.OnError?.Invoke(new MetaError("camera", "DECODE_FAILED", "Could not read the photo"));
                     }
                     break;
                 case "camera.photoFailed":

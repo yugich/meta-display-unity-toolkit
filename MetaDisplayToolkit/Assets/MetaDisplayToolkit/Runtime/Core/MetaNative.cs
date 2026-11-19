@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Scripting;
@@ -7,18 +6,18 @@ using UnityEngine.Scripting;
 namespace MetaDisplay
 {
     /// <summary>
-    /// Camada de baixo nível: chama a ponte Kotlin (MetaDisplayBridge.aar) via JNI e recebe os
-    /// eventos dela. Fora do Android (Editor), as chamadas viram simulação (ver <see cref="MetaEditorSimulation"/>).
+    /// Low-level layer: calls the Kotlin bridge (MetaDisplayBridge.aar) through JNI and receives its
+    /// events. Outside Android (Editor), calls become a simulation (see <see cref="MetaEditorSimulation"/>).
     /// </summary>
     internal static class MetaNative
     {
-        internal const string Package = "com.estudos.metadisplay.";
+        internal const string Package = "com.metadisplay.bridge.";
         internal const string ListenerInterface = Package + "MetaDisplayListener";
 
         static readonly Dictionary<string, AndroidJavaClass> s_Classes = new Dictionary<string, AndroidJavaClass>();
         static AndroidJavaObject s_Activity;
 
-        /// <summary>True quando rodando no aparelho Android (a ponte nativa existe).</summary>
+        /// <summary>True when running on the Android device (the native bridge exists).</summary>
         internal static bool IsNative =>
 #if UNITY_ANDROID && !UNITY_EDITOR
             true;
@@ -50,7 +49,7 @@ namespace MetaDisplay
             return cls;
         }
 
-        /// <summary>Chama um método estático void da ponte (classes MDCore, MDDisplay, MDCamera...).</summary>
+        /// <summary>Calls a static void method of the bridge (MDCore, MDDisplay, MDCamera... classes).</summary>
         internal static void Call(string cls, string method, params object[] args)
         {
             if (!IsNative)
@@ -64,8 +63,8 @@ namespace MetaDisplay
             }
             catch (Exception e)
             {
-                Debug.LogError($"[MetaDisplay] Falha ao chamar {cls}.{method}: {e.Message}\n" +
-                               "Confira se o MetaDisplayBridge.aar está em Plugins/Android e se o build incluiu as dependências do DAT.");
+                Debug.LogError($"[MetaDisplay] Failed to call {cls}.{method}: {e.Message}\n" +
+                               "Check that MetaDisplayBridge.aar is in Plugins/Android and that the build included the DAT dependencies.");
                 MetaEvents.RaiseError(new MetaError("bridge", "JNI_CALL_FAILED", $"{cls}.{method}: {e.Message}"));
             }
         }
@@ -79,12 +78,12 @@ namespace MetaDisplay
             }
             catch (Exception e)
             {
-                Debug.LogError($"[MetaDisplay] Falha ao chamar {cls}.{method}: {e.Message}");
+                Debug.LogError($"[MetaDisplay] Failed to call {cls}.{method}: {e.Message}");
                 return default;
             }
         }
 
-        /// <summary>Converte byte[] para sbyte[] (tipo que o JNI do Unity mapeia para byte[] do Java).</summary>
+        /// <summary>Converts byte[] to sbyte[] (the type Unity's JNI maps to Java byte[]).</summary>
         internal static sbyte[] ToJava(byte[] data)
         {
             if (data == null) return null;
@@ -103,7 +102,7 @@ namespace MetaDisplay
 
         internal static AndroidJavaProxy CreateListener() => new Listener();
 
-        /// <summary>Recebe eventos do Kotlin numa thread do Android e enfileira para a main thread.</summary>
+        /// <summary>Receives Kotlin events on an Android thread and queues them for the main thread.</summary>
         [Preserve]
         sealed class Listener : AndroidJavaProxy
         {

@@ -2,13 +2,13 @@ using MetaDisplay;
 using UnityEngine;
 
 /// <summary>
-/// Exemplo 100% por código (sem Canvas): monta a UI dos óculos com <see cref="Glasses"/>,
-/// mostra a câmera dos óculos num material e escreve no display o que o usuário fala.
-/// Coloque num GameObject. Pode conviver com o MetaDisplayManager (ele cuida da conexão).
+/// 100% code example (no Canvas): builds the glasses UI with <see cref="Glasses"/>,
+/// shows the glasses camera on a material and writes what the user says on the display.
+/// Put it on a GameObject. It can live alongside the MetaDisplayManager (which handles the connection).
 /// </summary>
 public class MetaDisplayCodeSample : MonoBehaviour
 {
-    [Tooltip("Opcional: Renderer que vai mostrar o vídeo da câmera dos óculos.")]
+    [Tooltip("Optional: Renderer that shows the glasses camera video.")]
     public Renderer cameraPreview;
     public bool connectHere = true;
 
@@ -53,13 +53,13 @@ public class MetaDisplayCodeSample : MonoBehaviour
             Glasses.Column(gap: 12, padding: 24).Add(
                 Glasses.Row(gap: 12).Add(
                     Glasses.Icon(GlassesIconName.SmartGlasses),
-                    Glasses.Heading("Feito por código")),
+                    Glasses.Heading("Built in code")),
                 Glasses.Card().Add(
-                    Glasses.Text($"Toques: {m_Taps}"),
-                    Glasses.Meta("Fale algo para aparecer aqui")),
+                    Glasses.Text($"Taps: {m_Taps}"),
+                    Glasses.Meta("Say something to show it here")),
                 Glasses.ButtonGroup(
                     Glasses.Button("+1", () => { m_Taps++; ShowHome(); }, icon: GlassesIconName.Plus, primary: true),
-                    Glasses.Button("Câmera", ToggleCamera, GlassesButtonStyle.Secondary, GlassesIconName.VideoCamera))));
+                    Glasses.Button("Camera", ToggleCamera, GlassesButtonStyle.Secondary, GlassesIconName.VideoCamera))));
     }
 
     void ToggleCamera()
@@ -70,8 +70,8 @@ public class MetaDisplayCodeSample : MonoBehaviour
 
     void OnSpeech(string text)
     {
-        MetaGlassesDisplay.Show(Glasses.Card().Add(Glasses.Meta("Você disse:"), Glasses.Heading(text),
-            Glasses.Button("Voltar", ShowHome, GlassesButtonStyle.Outline, GlassesIconName.ArrowLeft, primary: true)));
+        MetaGlassesDisplay.Show(Glasses.Card().Add(Glasses.Meta("You said:"), Glasses.Heading(text),
+            Glasses.Button("Back", ShowHome, GlassesButtonStyle.Outline, GlassesIconName.ArrowLeft, primary: true)));
     }
 
     void OnFrame(RenderTexture frame)

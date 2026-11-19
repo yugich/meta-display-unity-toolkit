@@ -10,15 +10,15 @@ using UnityEngine.UI;
 
 namespace MetaDisplay.Editor
 {
-    /// <summary>Menus GameObject > Meta Display e a cena de exemplo.</summary>
+    /// <summary>GameObject > Meta Display menus and the sample scene.</summary>
     public static class MetaDisplayMenus
     {
         const string Root = "GameObject/Meta Display/";
 
-        /// <summary>Todos os objetos do tipo na cena (inclui inativos). Compatível com Unity 6.0 a 6.6+.</summary>
+        /// <summary>All objects of the type in the scene (including inactive ones). Works on Unity 6.0 to 6.6+.</summary>
         public static T[] FindAll<T>() where T : Object
         {
-#pragma warning disable CS0618 // a sobrecarga sem FindObjectsSortMode não existe no Unity 6.0
+#pragma warning disable CS0618 // the overload without FindObjectsSortMode does not exist on Unity 6.0
             return Object.FindObjectsByType<T>(FindObjectsInactive.Include, FindObjectsSortMode.None);
 #pragma warning restore CS0618
         }
@@ -33,20 +33,20 @@ namespace MetaDisplay.Editor
                 return;
             }
             var go = new GameObject("Meta Display Manager");
-            Undo.RegisterCreatedObjectUndo(go, "Criar Meta Display Manager");
+            Undo.RegisterCreatedObjectUndo(go, "Create Meta Display Manager");
             go.AddComponent<MetaDisplayManager>();
             Selection.activeObject = go;
         }
 
 #if !METADISPLAY_UGUI
-        [MenuItem(Root + "Tela dos Óculos (requer uGUI)", false, 20)]
+        [MenuItem(Root + "Glasses Screen (requires uGUI)", false, 20)]
         public static void CreateScreenMenu() => AskForUgui();
 
         public static void CreateDemoScene() => AskForUgui();
 
         static void AskForUgui()
         {
-            if (EditorUtility.DisplayDialog("Meta Display", "Desenhar a UI dos óculos no Canvas precisa do pacote com.unity.ugui (Canvas + TextMeshPro). Instalar agora?", "Instalar", "Cancelar"))
+            if (EditorUtility.DisplayDialog("Meta Display", "Drawing the glasses UI on the Canvas needs the com.unity.ugui package (Canvas + TextMeshPro). Install it now?", "Install", "Cancel"))
                 UnityEditor.PackageManager.Client.Add("com.unity.ugui");
         }
 #else
@@ -56,67 +56,67 @@ namespace MetaDisplay.Editor
 
         // ───────────── menus ─────────────
 
-        [MenuItem(Root + "Tela dos Óculos (600x600)", false, 20)]
+        [MenuItem(Root + "Glasses Screen (600x600)", false, 20)]
         public static void CreateScreenMenu()
         {
-            var screen = CreateScreen("Tela " + (FindAll<GlassesScreen>().Length + 1), true);
+            var screen = CreateScreen("Screen " + (FindAll<GlassesScreen>().Length + 1), true);
             Selection.activeObject = screen.gameObject;
         }
 
-        [MenuItem(Root + "Container - Coluna", false, 40)]
-        static void MenuColumn() => Select(CreateFlex("Coluna", ResolveParent(), GlassesDirection.Column, GlassesBackground.None));
+        [MenuItem(Root + "Container - Column", false, 40)]
+        static void MenuColumn() => Select(CreateFlex("Column", ResolveParent(), GlassesDirection.Column, GlassesBackground.None));
 
-        [MenuItem(Root + "Container - Linha", false, 41)]
-        static void MenuRow() => Select(CreateFlex("Linha", ResolveParent(), GlassesDirection.Row, GlassesBackground.None));
+        [MenuItem(Root + "Container - Row", false, 41)]
+        static void MenuRow() => Select(CreateFlex("Row", ResolveParent(), GlassesDirection.Row, GlassesBackground.None));
 
-        [MenuItem(Root + "Container - Cartão", false, 42)]
-        static void MenuCard() => Select(CreateFlex("Cartão", ResolveParent(), GlassesDirection.Column, GlassesBackground.Card));
+        [MenuItem(Root + "Container - Card", false, 42)]
+        static void MenuCard() => Select(CreateFlex("Card", ResolveParent(), GlassesDirection.Column, GlassesBackground.Card));
 
-        [MenuItem(Root + "Texto - Título", false, 60)]
-        static void MenuHeading() => Select(CreateText("Título", ResolveParent(), "Título", GlassesTextStyle.Heading));
+        [MenuItem(Root + "Text - Heading", false, 60)]
+        static void MenuHeading() => Select(CreateText("Heading", ResolveParent(), "Heading", GlassesTextStyle.Heading));
 
-        [MenuItem(Root + "Texto - Corpo", false, 61)]
-        static void MenuBody() => Select(CreateText("Texto", ResolveParent(), "Texto do corpo", GlassesTextStyle.Body));
+        [MenuItem(Root + "Text - Body", false, 61)]
+        static void MenuBody() => Select(CreateText("Text", ResolveParent(), "Body text", GlassesTextStyle.Body));
 
-        [MenuItem(Root + "Texto - Legenda (Meta)", false, 62)]
-        static void MenuMeta() => Select(CreateText("Legenda", ResolveParent(), "Legenda", GlassesTextStyle.Meta, GlassesTextColor.Secondary));
+        [MenuItem(Root + "Text - Caption (Meta)", false, 62)]
+        static void MenuMeta() => Select(CreateText("Caption", ResolveParent(), "Caption", GlassesTextStyle.Meta, GlassesTextColor.Secondary));
 
-        [MenuItem(Root + "Botão", false, 80)]
-        static void MenuButton() => Select(CreateButton("Botão", ResolveParent(), "Botão", GlassesButtonStyle.Primary));
+        [MenuItem(Root + "Button", false, 80)]
+        static void MenuButton() => Select(CreateButton("Button", ResolveParent(), "Button", GlassesButtonStyle.Primary));
 
-        [MenuItem(Root + "Grupo de Botões", false, 81)]
+        [MenuItem(Root + "Button Group", false, 81)]
         static void MenuButtonGroup()
         {
             var parent = ResolveParent();
-            var go = NewUI("Grupo de Botões", parent);
-            var group = go.AddComponent<GlassesButtonGroup>();
+            var go = NewUI("Button Group", parent);
+            go.AddComponent<GlassesButtonGroup>();
             var lg = go.AddComponent<HorizontalLayoutGroup>();
             lg.spacing = 12;
             lg.childControlWidth = lg.childControlHeight = true;
             lg.childForceExpandWidth = lg.childForceExpandHeight = false;
             lg.childAlignment = TextAnchor.MiddleCenter;
-            CreateButton("Botão A", go.transform, "Sim", GlassesButtonStyle.Primary);
-            CreateButton("Botão B", go.transform, "Não", GlassesButtonStyle.Secondary);
+            CreateButton("Button A", go.transform, "Yes", GlassesButtonStyle.Primary);
+            CreateButton("Button B", go.transform, "No", GlassesButtonStyle.Secondary);
             Select(go);
         }
 
-        [MenuItem(Root + "Imagem", false, 100)]
-        static void MenuImage() => Select(CreateImage("Imagem", ResolveParent()));
+        [MenuItem(Root + "Image", false, 100)]
+        static void MenuImage() => Select(CreateImage("Image", ResolveParent()));
 
-        [MenuItem(Root + "Ícone", false, 101)]
-        static void MenuIcon() => Select(CreateIcon("Ícone", ResolveParent(), GlassesIconName.Star));
+        [MenuItem(Root + "Icon", false, 101)]
+        static void MenuIcon() => Select(CreateIcon("Icon", ResolveParent(), GlassesIconName.Star));
 
-        [MenuItem(Root + "Somente no celular (GlassesIgnore)", false, 120)]
+        [MenuItem(Root + "Phone Only (GlassesIgnore)", false, 120)]
         static void MenuIgnore()
         {
             foreach (var go in Selection.gameObjects)
                 if (go.GetComponent<GlassesIgnore>() == null) Undo.AddComponent<GlassesIgnore>(go);
         }
 
-        [MenuItem("Meta Display/Criar cena de exemplo", false, 20)]
+        [MenuItem("Meta Display/Create Sample Scene", false, 20)]
         public static void CreateDemoSceneMenu() => CreateDemoScene();
 
-        // ───────────── construção ─────────────
+        // ───────────── building ─────────────
 
         static void Select(GameObject go)
         {
@@ -126,7 +126,7 @@ namespace MetaDisplay.Editor
         static GameObject NewUI(string name, Transform parent)
         {
             var go = new GameObject(name, typeof(RectTransform));
-            Undo.RegisterCreatedObjectUndo(go, "Criar " + name);
+            Undo.RegisterCreatedObjectUndo(go, "Create " + name);
             if (parent != null) go.transform.SetParent(parent, false);
             int ui = LayerMask.NameToLayer("UI");
             if (ui >= 0) go.layer = ui;
@@ -142,16 +142,16 @@ namespace MetaDisplay.Editor
                 return container ? sel.transform : sel.transform.parent;
             }
             var screen = Object.FindAnyObjectByType<GlassesScreen>(FindObjectsInactive.Include);
-            return screen != null ? screen.transform : CreateScreen("Tela 1", false).transform;
+            return screen != null ? screen.transform : CreateScreen("Screen 1", false).transform;
         }
 
         static Canvas FindOrCreateGlassesCanvas()
         {
             foreach (var c in FindAll<Canvas>())
-                if (c.isRootCanvas && c.name.StartsWith("Óculos")) return c;
+                if (c.isRootCanvas && c.name.StartsWith("Glasses")) return c;
 
-            var go = new GameObject("Óculos (Canvas)", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-            Undo.RegisterCreatedObjectUndo(go, "Criar Canvas dos óculos");
+            var go = new GameObject("Glasses (Canvas)", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            Undo.RegisterCreatedObjectUndo(go, "Create glasses Canvas");
             int ui = LayerMask.NameToLayer("UI");
             if (ui >= 0) go.layer = ui;
             var canvas = go.GetComponent<Canvas>();
@@ -167,7 +167,7 @@ namespace MetaDisplay.Editor
             if (Object.FindAnyObjectByType<EventSystem>() != null) return;
             if (EditorApplication.ExecuteMenuItem("GameObject/UI/Event System")) return;
             var es = new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
-            Undo.RegisterCreatedObjectUndo(es, "Criar EventSystem");
+            Undo.RegisterCreatedObjectUndo(es, "Create EventSystem");
         }
 
         public static GlassesScreen CreateScreen(string name, bool withSample, float x = 0)
@@ -179,7 +179,7 @@ namespace MetaDisplay.Editor
             rt.sizeDelta = new Vector2(600, 600);
             rt.anchoredPosition = new Vector2(x, 0);
             var bg = go.AddComponent<Image>();
-            bg.color = Black; // nos óculos, preto = transparente
+            bg.color = Black; // on the glasses, black = transparent
             var screen = go.AddComponent<GlassesScreen>();
             screen.screenId = name.ToLowerInvariant().Replace(' ', '-');
             screen.phoneVisibility = GlassesScreen.PhoneVisibility.Mirror;
@@ -191,9 +191,9 @@ namespace MetaDisplay.Editor
             GlassesCanvasPreview.SyncLayout(fb);
             if (withSample)
             {
-                CreateText("Título", go.transform, name, GlassesTextStyle.Heading);
-                CreateText("Texto", go.transform, "Desenhe esta tela no Canvas: ela vira a UI dos óculos.", GlassesTextStyle.Body);
-                CreateButton("Botão", go.transform, "OK", GlassesButtonStyle.Primary, GlassesIconName.Checkmark, true);
+                CreateText("Heading", go.transform, name, GlassesTextStyle.Heading);
+                CreateText("Text", go.transform, "Draw this screen on the Canvas: it becomes the glasses UI.", GlassesTextStyle.Body);
+                CreateButton("Button", go.transform, "OK", GlassesButtonStyle.Primary, GlassesIconName.Checkmark, true);
             }
             return screen;
         }
@@ -264,7 +264,7 @@ namespace MetaDisplay.Editor
                 gb.icon = icon.Value;
             }
 
-            var labelGo = NewUI("Texto", go.transform);
+            var labelGo = NewUI("Text", go.transform);
             var lrt = (RectTransform)labelGo.transform;
             lrt.anchorMin = Vector2.zero;
             lrt.anchorMax = Vector2.one;
@@ -273,7 +273,7 @@ namespace MetaDisplay.Editor
             AddText(labelGo, (icon.HasValue ? "◆ " : "") + label, 24, Color.white, true);
             gb.label = label;
             GlassesCanvasPreview.StyleButton(gb);
-            // StyleButton escreve o label sem o marcador do ícone; recoloca para o preview
+            // StyleButton writes the label without the icon marker; put it back for the preview
             var tmp = labelGo.GetComponent<TMP_Text>();
             if (tmp != null) tmp.text = (icon.HasValue ? "◆ " : "") + label;
             var legacy = labelGo.GetComponent<Text>();
@@ -306,7 +306,7 @@ namespace MetaDisplay.Editor
             return go;
         }
 
-        // ───────────── cena de exemplo ─────────────
+        // ───────────── sample scene ─────────────
 
         public static void CreateDemoScene()
         {
@@ -316,61 +316,61 @@ namespace MetaDisplay.Editor
             CreateManager();
             var manager = Object.FindAnyObjectByType<MetaDisplayManager>();
 
-            var home = CreateScreen("Início", false, 0);
-            var counter = CreateScreen("Contador", false, 650);
-            var about = CreateScreen("Sobre", false, 1300);
+            var home = CreateScreen("Home", false, 0);
+            var counter = CreateScreen("Counter", false, 650);
+            var about = CreateScreen("About", false, 1300);
 
-            // Início
-            var header = CreateFlex("Cabeçalho", home.transform, GlassesDirection.Row, GlassesBackground.None, 12);
-            CreateIcon("Ícone", header.transform, GlassesIconName.SmartGlasses);
-            CreateText("Título", header.transform, "Olá, óculos!", GlassesTextStyle.Heading);
-            CreateText("Texto", home.transform, "Esta tela foi desenhada no Canvas do Unity e convertida para o Meta Ray-Ban Display.", GlassesTextStyle.Body);
-            CreateText("Dica", home.transform, "Toque nos botões pelo touchpad ou pela Neural Band.", GlassesTextStyle.Meta, GlassesTextColor.Secondary);
-            var homeButtons = CreateFlex("Botões", home.transform, GlassesDirection.Row, GlassesBackground.None, 12);
-            var toCounter = CreateButton("Botão Contador", homeButtons.transform, "Contador", GlassesButtonStyle.Primary, GlassesIconName.Plus, true);
-            var toAbout = CreateButton("Botão Sobre", homeButtons.transform, "Sobre", GlassesButtonStyle.Secondary, GlassesIconName.ICircle);
+            // Home
+            var header = CreateFlex("Header", home.transform, GlassesDirection.Row, GlassesBackground.None, 12);
+            CreateIcon("Icon", header.transform, GlassesIconName.SmartGlasses);
+            CreateText("Heading", header.transform, "Hello, glasses!", GlassesTextStyle.Heading);
+            CreateText("Text", home.transform, "This screen was drawn on the Unity Canvas and converted for the Meta Ray-Ban Display.", GlassesTextStyle.Body);
+            CreateText("Hint", home.transform, "Tap the buttons with the touchpad or the Neural Band.", GlassesTextStyle.Meta, GlassesTextColor.Secondary);
+            var homeButtons = CreateFlex("Buttons", home.transform, GlassesDirection.Row, GlassesBackground.None, 12);
+            var toCounter = CreateButton("Counter Button", homeButtons.transform, "Counter", GlassesButtonStyle.Primary, GlassesIconName.Plus, true);
+            var toAbout = CreateButton("About Button", homeButtons.transform, "About", GlassesButtonStyle.Secondary, GlassesIconName.ICircle);
             toCounter.GetComponent<GlassesButton>().navigateTo = counter;
             toAbout.GetComponent<GlassesButton>().navigateTo = about;
 
-            // Contador
-            var card = CreateFlex("Cartão", counter.transform, GlassesDirection.Column, GlassesBackground.Card, 8);
-            CreateText("Título", card.transform, "Contador", GlassesTextStyle.Heading);
-            var value = CreateText("Valor", card.transform, "Toques: 0", GlassesTextStyle.Body);
+            // Counter
+            var card = CreateFlex("Card", counter.transform, GlassesDirection.Column, GlassesBackground.Card, 8);
+            CreateText("Heading", card.transform, "Counter", GlassesTextStyle.Heading);
+            var value = CreateText("Value", card.transform, "Taps: 0", GlassesTextStyle.Body);
             var counterComp = counter.gameObject.AddComponent<GlassesCounter>();
             counterComp.target = value;
-            var counterButtons = CreateFlex("Botões", counter.transform, GlassesDirection.Row, GlassesBackground.None, 12);
-            var plus = CreateButton("Botão +1", counterButtons.transform, "+1", GlassesButtonStyle.Primary, GlassesIconName.Plus, true);
+            var counterButtons = CreateFlex("Buttons", counter.transform, GlassesDirection.Row, GlassesBackground.None, 12);
+            var plus = CreateButton("+1 Button", counterButtons.transform, "+1", GlassesButtonStyle.Primary, GlassesIconName.Plus, true);
             UnityEventTools.AddPersistentListener(plus.GetComponent<GlassesButton>().onClick, counterComp.Increment);
-            var back1 = CreateButton("Botão Voltar", counterButtons.transform, "Voltar", GlassesButtonStyle.Secondary, GlassesIconName.ArrowLeft);
+            var back1 = CreateButton("Back Button", counterButtons.transform, "Back", GlassesButtonStyle.Secondary, GlassesIconName.ArrowLeft);
             back1.GetComponent<GlassesButton>().navigateTo = home;
 
-            // Sobre
-            var aboutCard = CreateFlex("Cartão", about.transform, GlassesDirection.Column, GlassesBackground.Card, 8);
-            CreateText("Título", aboutCard.transform, "Meta Display Toolkit", GlassesTextStyle.Heading);
-            CreateText("Texto", aboutCard.transform, "Unity + Meta Wearables Device Access Toolkit 1.0.1", GlassesTextStyle.Body);
-            CreateText("Legenda", aboutCard.transform, "Textos, botões, ícones e imagens do Canvas viram UI nativa dos óculos.", GlassesTextStyle.Meta, GlassesTextColor.Secondary);
-            var back2 = CreateButton("Botão Voltar", about.transform, "Voltar", GlassesButtonStyle.Outline, GlassesIconName.ArrowLeft, true);
+            // About
+            var aboutCard = CreateFlex("Card", about.transform, GlassesDirection.Column, GlassesBackground.Card, 8);
+            CreateText("Heading", aboutCard.transform, "Meta Display Toolkit", GlassesTextStyle.Heading);
+            CreateText("Text", aboutCard.transform, "Unity + Meta Wearables Device Access Toolkit 1.0.1", GlassesTextStyle.Body);
+            CreateText("Caption", aboutCard.transform, "Canvas texts, buttons, icons and images become native glasses UI.", GlassesTextStyle.Meta, GlassesTextColor.Secondary);
+            var back2 = CreateButton("Back Button", about.transform, "Back", GlassesButtonStyle.Outline, GlassesIconName.ArrowLeft, true);
             back2.GetComponent<GlassesButton>().navigateTo = home;
 
             manager.initialScreen = home;
 
-            // UI só do celular
-            var phone = new GameObject("Celular (Canvas)", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-            Undo.RegisterCreatedObjectUndo(phone, "Canvas do celular");
+            // Phone-only UI
+            var phone = new GameObject("Phone (Canvas)", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            Undo.RegisterCreatedObjectUndo(phone, "Phone Canvas");
             phone.layer = LayerMask.NameToLayer("UI");
             phone.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
             var scaler = phone.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1080, 1920);
             scaler.matchWidthOrHeight = 0.5f;
-            var note = NewUI("Aviso", phone.transform);
+            var note = NewUI("Note", phone.transform);
             var nrt = (RectTransform)note.transform;
             nrt.anchorMin = new Vector2(0, 0);
             nrt.anchorMax = new Vector2(1, 0);
             nrt.pivot = new Vector2(0.5f, 0);
             nrt.sizeDelta = new Vector2(-80, 220);
             nrt.anchoredPosition = new Vector2(0, 60);
-            AddText(note, "UI do CELULAR (este Canvas não vai para os óculos).\nO espelho no centro mostra a tela atual dos óculos.", 34, new Color(1, 1, 1, 0.8f), true);
+            AddText(note, "PHONE UI (this Canvas does not go to the glasses).\nThe mirror in the center shows the current glasses screen.", 34, new Color(1, 1, 1, 0.8f), true);
 
             EditorSceneManager.MarkSceneDirty(scene);
             var path = "Assets/MetaDisplayDemo.unity";
@@ -379,7 +379,7 @@ namespace MetaDisplay.Editor
                 var scenes = new System.Collections.Generic.List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
                 if (!scenes.Exists(s => s.path == path)) scenes.Insert(0, new EditorBuildSettingsScene(path, true));
                 EditorBuildSettings.scenes = scenes.ToArray();
-                Debug.Log("[MetaDisplay] Cena de exemplo criada em " + path + " (adicionada ao Build). Dê Play para testar no Editor.");
+                Debug.Log("[MetaDisplay] Sample scene created at " + path + " (added to the Build). Press Play to test in the Editor.");
             }
             Selection.activeObject = manager;
         }

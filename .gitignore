@@ -1,4 +1,4 @@
-# Binários publicados na Release do GitHub (não versionar)
+# Binaries published in the GitHub Release (not versioned)
 *.apk
 *.aab
 *.unitypackage
@@ -13,7 +13,7 @@ local.properties
 .cxx/
 .kotlin/
 
-# Sistema / editores
+# OS / editors
 .DS_Store
 Thumbs.db
 .vscode/

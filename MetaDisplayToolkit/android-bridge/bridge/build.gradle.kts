@@ -6,13 +6,13 @@ plugins {
 }
 
 android {
-  namespace = "com.estudos.metadisplay"
+  namespace = "com.metadisplay.bridge"
   compileSdk = 36
 
   defaultConfig {
-    // O SDK da Meta declara minSdk 29 (Android 10)
+    // The Meta SDK declares minSdk 29 (Android 10)
     minSdk = 29
-    // Vai dentro do .aar e é aplicado no build do Unity
+    // Shipped inside the .aar and applied by the Unity build
     consumerProguardFiles("consumer-rules.pro")
   }
 
@@ -29,14 +29,14 @@ android {
 kotlin {
   compilerOptions {
     jvmTarget = JvmTarget.JVM_17
-    // APIs experimentais do DAT (áudio, voice invocations, foto standalone) exigem opt-in
+    // Experimental DAT APIs (audio, voice invocations, standalone photo) require opt-in
     freeCompilerArgs.add("-opt-in=kotlin.RequiresOptIn")
   }
 }
 
 dependencies {
-  // Só para compilar: o .aar NÃO carrega estas dependências.
-  // O Unity adiciona os mesmos artefatos no build (MetaDisplayGradlePostProcessor.cs).
+  // Compile only: the .aar does NOT carry these dependencies.
+  // Unity adds the same artifacts at build time (MetaDisplayGradlePostProcessor.cs).
   compileOnly(libs.mwdat.core)
   compileOnly(libs.mwdat.display)
   compileOnly(libs.mwdat.camera)

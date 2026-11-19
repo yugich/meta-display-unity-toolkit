@@ -1,21 +1,17 @@
 #if METADISPLAY_UGUI
-using System;
 using UnityEngine;
-using UnityEngine.Events;
-using UnityEngine.UI;
-
 
 namespace MetaDisplay
 {
-    /// <summary>Base dos componentes de UI dos óculos: opções de filho de um flexbox.</summary>
+    /// <summary>Base of the glasses UI components: options as a child of a flexbox.</summary>
     public abstract class GlassesElement : MonoBehaviour
     {
-        [Header("Como filho de um container")]
-        [Tooltip("Quanto cresce para ocupar espaço livre (0 = tamanho natural).")]
+        [Header("As a container child")]
+        [Tooltip("How much it grows to fill free space (0 = natural size).")]
         public float flexGrow;
-        [Tooltip("Quanto encolhe quando falta espaço.")]
+        [Tooltip("How much it shrinks when space is short.")]
         public float flexShrink;
-        [Tooltip("Sobrescreve o alinhamento no eixo cruzado do container pai.")]
+        [Tooltip("Overrides the cross-axis alignment of the parent container.")]
         public bool overrideAlignSelf;
         public GlassesAlignment alignSelf = GlassesAlignment.Start;
 
@@ -26,7 +22,7 @@ namespace MetaDisplay
             if (overrideAlignSelf) node.AlignSelf = alignSelf;
         }
 
-        /// <summary>Pede um reenvio da tela que contém este elemento (se ela estiver nos óculos).</summary>
+        /// <summary>Requests a re-send of the screen that contains this element (if it is on the glasses).</summary>
         public void RefreshScreen()
         {
             var screen = GetComponentInParent<GlassesScreen>(true);

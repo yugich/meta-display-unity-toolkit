@@ -1,5 +1,5 @@
 [versions]
-# Mesmas versões do sample oficial DisplayAccess (meta-wearables-dat-android)
+# Same versions as the official DisplayAccess sample (meta-wearables-dat-android)
 agp = "8.11.1"
 kotlin = "2.2.21"
 mwdat = "1.0.1"

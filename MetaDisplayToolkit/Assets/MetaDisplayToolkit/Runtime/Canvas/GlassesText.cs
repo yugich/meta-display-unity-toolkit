@@ -1,22 +1,18 @@
 #if METADISPLAY_UGUI
-using System;
 using UnityEngine;
-using UnityEngine.Events;
-using UnityEngine.UI;
-
 
 namespace MetaDisplay
 {
-    /// <summary>Texto nos óculos. Lê o conteúdo de um TextMeshPro ou Text no mesmo objeto.</summary>
+    /// <summary>Text on the glasses. Reads the content of a TextMeshPro or Text on the same object.</summary>
     [DisallowMultipleComponent]
-    [AddComponentMenu("Meta Display/Óculos - Texto")]
+    [AddComponentMenu("Meta Display/Glasses - Text")]
     public class GlassesText : GlassesElement
     {
         public GlassesTextStyle style = GlassesTextStyle.Body;
         public GlassesTextColor color = GlassesTextColor.Primary;
-        [Tooltip("Vazio = usa o texto do componente TextMeshPro/Text deste objeto.")]
+        [Tooltip("Empty = uses the text of the TextMeshPro/Text component on this object.")]
         [TextArea] public string overrideText;
-        [Tooltip("Ajusta tamanho/cor do texto no Canvas para parecer com os óculos (só no Editor).")]
+        [Tooltip("Adjusts the text size/color on the Canvas to look like the glasses (Editor only).")]
         public bool previewStyle = true;
 
 #if UNITY_EDITOR

@@ -4,16 +4,16 @@ using UnityEngine;
 namespace MetaDisplay
 {
     /// <summary>
-    /// Fora do Android não existe ponte nativa. Para dar para testar o fluxo no Editor (Play Mode),
-    /// esta classe responde às chamadas como se houvesse um Meta Ray-Ban Display conectado:
-    /// registro, sessão, display e envio de telas. Câmera/sensores apenas mudam de estado.
-    /// Os cliques são testados clicando no espelho da tela (GlassesScreen) ou pelo MetaDisplayManager.
+    /// Outside Android there is no native bridge. So the flow can be tested in the Editor (Play Mode),
+    /// this class answers calls as if a Meta Ray-Ban Display were connected:
+    /// registration, session, display and screen sending. Camera/sensors only change state.
+    /// Clicks are tested by clicking the screen mirror (GlassesScreen) or through the MetaDisplayManager.
     /// </summary>
     public static class MetaEditorSimulation
     {
-        /// <summary>Liga/desliga a simulação (o MetaDisplayManager controla isso).</summary>
+        /// <summary>Turns the simulation on/off (the MetaDisplayManager controls this).</summary>
         public static bool Enabled = true;
-        /// <summary>Começa como app já registrado no Meta AI (conecta direto ao dar Play).</summary>
+        /// <summary>Starts as an app already registered in Meta AI (connects right away on Play).</summary>
         public static bool StartRegistered = true;
 
         static bool s_Registered = true;
@@ -30,7 +30,7 @@ namespace MetaDisplay
             if (!Enabled)
             {
                 if (cls == "MDCore" && method == "initialize")
-                    Debug.Log("[MetaDisplay] Fora do Android e com a simulação desligada: nada a fazer.");
+                    Debug.Log("[MetaDisplay] Not on Android and the simulation is off: nothing to do.");
                 return;
             }
 
@@ -40,7 +40,7 @@ namespace MetaDisplay
                     Emit("initialized", "{\"sdkVersion\":\"1.0.1\",\"bridgeVersion\":\"editor\",\"devMode\":true,\"modules\":[\"core\",\"display\",\"camera\",\"inputs\",\"motion\",\"speech\",\"mockdevice\"]}");
                     Emit("registration", "{\"state\":" + Q(s_Registered ? "REGISTERED" : "AVAILABLE") + "}");
                     Emit("devices", "{\"ids\":[\"editor-glasses\"]}");
-                    Emit("device", "{\"id\":\"editor-glasses\",\"name\":\"Óculos simulados (Editor)\",\"type\":\"META_RAYBAN_DISPLAY\",\"linkState\":\"CONNECTED\",\"compatibility\":\"COMPATIBLE\",\"firmware\":\"editor\",\"battery\":87,\"charging\":\"NOT_CHARGING\",\"don\":\"DONNED\",\"hinge\":\"OPEN\",\"thermal\":\"NONE\",\"displayCapable\":true}");
+                    Emit("device", "{\"id\":\"editor-glasses\",\"name\":\"Simulated glasses (Editor)\",\"type\":\"META_RAYBAN_DISPLAY\",\"linkState\":\"CONNECTED\",\"compatibility\":\"COMPATIBLE\",\"firmware\":\"editor\",\"battery\":87,\"charging\":\"NOT_CHARGING\",\"don\":\"DONNED\",\"hinge\":\"OPEN\",\"thermal\":\"NONE\",\"displayCapable\":true}");
                     break;
 
                 case "MDCore.startRegistration":
@@ -65,7 +65,7 @@ namespace MetaDisplay
                 case "MDCore.startSession":
                     if (!s_Registered)
                     {
-                        Emit("session.error", "{\"error\":\"NO_ELIGIBLE_DEVICE\",\"message\":\"(Editor) Registre o app antes de conectar\"}");
+                        Emit("session.error", "{\"error\":\"NO_ELIGIBLE_DEVICE\",\"message\":\"(Editor) Register the app before connecting\"}");
                         break;
                     }
                     if (s_SessionStarted) break;
@@ -98,7 +98,7 @@ namespace MetaDisplay
                     var idJson = id.ToString(CultureInfo.InvariantCulture);
                     if (!s_SessionStarted || !s_DisplayWanted)
                     {
-                        Emit("display.sendFailed", "{\"requestId\":" + idJson + ",\"error\":\"NOT_READY\",\"message\":\"(Editor) Display não está pronto\"}");
+                        Emit("display.sendFailed", "{\"requestId\":" + idJson + ",\"error\":\"NOT_READY\",\"message\":\"(Editor) Display is not ready\"}");
                         break;
                     }
                     Emit("display.sent", "{\"requestId\":" + idJson + "}");
@@ -108,7 +108,7 @@ namespace MetaDisplay
 
                 case "MDCamera.startStream":
                     Emit("camera.state", "{\"state\":\"STARTING\"}");
-                    Emit("camera.error", "{\"error\":\"EDITOR\",\"message\":\"(Editor) A câmera dos óculos só funciona no aparelho. Use o MockDeviceKit no celular.\"}");
+                    Emit("camera.error", "{\"error\":\"EDITOR\",\"message\":\"(Editor) The glasses camera only works on the device. Use MockDeviceKit on the phone.\"}");
                     break;
 
                 case "MDCamera.stopStream":
@@ -148,11 +148,11 @@ namespace MetaDisplay
             Emit("display.state", "{\"state\":\"STARTED\"}");
         }
 
-        /// <summary>Simula uma fala nos óculos (Editor).</summary>
+        /// <summary>Simulates speech on the glasses (Editor).</summary>
         public static void SimulateTranscription(string text, bool isFinal = true) =>
             Emit("speech.transcription", "{\"text\":" + JsonString(text) + ",\"isFinal\":" + (isFinal ? "true" : "false") + ",\"confidence\":0.9}");
 
-        /// <summary>Simula um input dos óculos (Editor). kind: NAV, SELECT, BACK, CAPTURE...</summary>
+        /// <summary>Simulates a glasses input (Editor). kind: NAV, SELECT, BACK, CAPTURE...</summary>
         public static void SimulateInput(InputKind kind, NavDirection direction = NavDirection.Down) =>
             Emit("input", "{\"kind\":" + Q(MetaEnum.ToSdk(kind)) + ",\"direction\":" + Q(MetaEnum.ToSdk(direction)) + ",\"source\":\"CAPTOUCH\"}");
 

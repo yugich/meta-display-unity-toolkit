@@ -6,8 +6,8 @@ using UnityEngine;
 namespace MetaDisplay
 {
     /// <summary>
-    /// Leva os eventos da ponte para a main thread do Unity e faz o polling de frames, IMU e áudio.
-    /// Criado automaticamente (objeto oculto, DontDestroyOnLoad).
+    /// Brings bridge events to the Unity main thread and polls frames, IMU and audio.
+    /// Created automatically (hidden object, DontDestroyOnLoad).
     /// </summary>
     [AddComponentMenu("")]
     [DefaultExecutionOrder(-1000)]
@@ -16,7 +16,7 @@ namespace MetaDisplay
         static readonly ConcurrentQueue<KeyValuePair<string, string>> s_Queue = new ConcurrentQueue<KeyValuePair<string, string>>();
         static MetaDispatcher s_Instance;
 
-        /// <summary>Chamado a cada frame (main thread), depois dos eventos.</summary>
+        /// <summary>Called every frame (main thread), after the events.</summary>
         internal static event Action Tick;
 
         internal static void Enqueue(string type, string payload) =>

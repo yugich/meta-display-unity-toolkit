@@ -6,39 +6,39 @@ using UnityEngine.Events;
 namespace MetaDisplay
 {
     /// <summary>
-    /// Uma tela dos óculos desenhada no Canvas (área de 600x600). Tudo que estiver dentro deste objeto
-    /// vira UI dos óculos ao chamar <see cref="Show"/>. Escolha se ela também aparece no celular.
+    /// A glasses screen drawn on the Canvas (a 600x600 area). Everything inside this object becomes
+    /// glasses UI when <see cref="Show"/> is called. Choose whether it also appears on the phone.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(RectTransform))]
-    [AddComponentMenu("Meta Display/Tela dos Óculos (Glasses Screen)")]
+    [AddComponentMenu("Meta Display/Glasses Screen")]
     public class GlassesScreen : MonoBehaviour
     {
         public enum PhoneVisibility
         {
-            [InspectorName("Só nos óculos (escondida no celular)")] GlassesOnly,
-            [InspectorName("Óculos + espelho no celular")] Mirror,
-            [InspectorName("Óculos + miniatura no canto do celular")] MirrorThumbnail,
+            [InspectorName("Glasses only (hidden on the phone)")] GlassesOnly,
+            [InspectorName("Glasses + mirror on the phone")] Mirror,
+            [InspectorName("Glasses + thumbnail in the phone corner")] MirrorThumbnail,
         }
 
         public enum ContentKind
         {
-            [InspectorName("Layout (elementos do Canvas)")] Layout,
-            [InspectorName("Vídeo MP4 (URL HTTPS)")] Video,
+            [InspectorName("Layout (Canvas elements)")] Layout,
+            [InspectorName("MP4 video (HTTPS URL)")] Video,
         }
 
-        [Tooltip("Nome para chamar por código: GlassesScreen.Find(\"home\").Show()")]
+        [Tooltip("Name used from code: GlassesScreen.Find(\"home\").Show()")]
         public string screenId = "";
-        [Tooltip("Onde esta tela aparece no Play/Build. Ela sempre é enviada aos óculos quando mostrada.")]
+        [Tooltip("Where this screen appears in Play/Build. It is always sent to the glasses when shown.")]
         public PhoneVisibility phoneVisibility = PhoneVisibility.GlassesOnly;
         public ContentKind content = ContentKind.Layout;
 
-        [Tooltip("MP4 por HTTPS, até 400 px por lado e 70.000 px no total.")]
+        [Tooltip("MP4 over HTTPS, up to 400 px per side and 70,000 px total.")]
         public string videoUrl = "";
-        [Tooltip("Tela a mostrar quando o vídeo terminar.")]
+        [Tooltip("Screen to show when the video ends.")]
         public GlassesScreen nextScreenWhenVideoEnds;
 
-        [Tooltip("Reenvia sozinha quando algum texto/elemento mudar (compara a cada intervalo).")]
+        [Tooltip("Re-sends automatically when any text/element changes (compared every interval).")]
         public bool autoRefresh = true;
         [Min(0.1f)] public float autoRefreshInterval = 0.5f;
 
@@ -46,7 +46,7 @@ namespace MetaDisplay
 
         static readonly List<GlassesScreen> s_All = new List<GlassesScreen>();
 
-        /// <summary>Tela que está nos óculos agora.</summary>
+        /// <summary>Screen currently on the glasses.</summary>
         public static GlassesScreen Current { get; private set; }
         public static IReadOnlyList<GlassesScreen> All => s_All;
         public static event System.Action<GlassesScreen> CurrentChanged;
@@ -81,13 +81,13 @@ namespace MetaDisplay
             MetaGlassesDisplay.VideoStateChanged -= OnVideoState;
         }
 
-        /// <summary>Converte o conteúdo do Canvas em UI dos óculos.</summary>
+        /// <summary>Converts the Canvas content into glasses UI.</summary>
         public GlassesNode BuildNode() => GlassesCanvasConverter.Convert(this);
 
-        /// <summary>JSON que seria enviado (útil para depurar).</summary>
+        /// <summary>JSON that would be sent (useful for debugging).</summary>
         public string BuildJson() => GlassesJson.Serialize(BuildNode(), new GlassesSendContext { DryRun = true });
 
-        /// <summary>Mostra esta tela nos óculos (e atualiza o espelho no celular).</summary>
+        /// <summary>Shows this screen on the glasses (and updates the phone mirror).</summary>
         public void Show()
         {
             var previous = Current;
@@ -106,13 +106,15 @@ namespace MetaDisplay
                 MetaGlassesDisplay.Show(node);
             }
             m_NextCheck = Time.unscaledTime + autoRefreshInterval;
-            if (previous != null && previous != this) previous.ApplyPhoneVisibility();
-            ApplyPhoneVisibility();
+            // Re-apply on every screen: before the first Show, the first screen may be visible as the default mirror.
+            foreach (var screen in s_All)
+                if (screen != null) screen.ApplyPhoneVisibility();
+            if (previous != null && !s_All.Contains(previous)) previous.ApplyPhoneVisibility();
             onShown?.Invoke();
             CurrentChanged?.Invoke(this);
         }
 
-        /// <summary>Reenvia se esta tela estiver nos óculos.</summary>
+        /// <summary>Re-sends if this screen is on the glasses.</summary>
         public void Refresh()
         {
             if (IsShowing && content == ContentKind.Layout) Show();
@@ -134,7 +136,7 @@ namespace MetaDisplay
             if (json != m_LastJson) Show();
         }
 
-        /// <summary>Aplica a visibilidade no celular (no Editor fora do Play, tudo fica visível para editar).</summary>
+        /// <summary>Applies the phone visibility (in the Editor outside Play, everything stays visible for editing).</summary>
         public void ApplyPhoneVisibility()
         {
             if (!Application.isPlaying) return;
@@ -163,7 +165,7 @@ namespace MetaDisplay
             }
             else if (visible)
             {
-                // Espelho: centraliza a tela atual (no Editor as telas podem estar lado a lado).
+                // Mirror: centers the current screen (in the Editor the screens may sit side by side).
                 rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
                 rt.anchoredPosition = Vector2.zero;
                 rt.localScale = m_OriginalScale;

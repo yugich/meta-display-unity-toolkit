@@ -1,46 +1,43 @@
 #if METADISPLAY_UGUI
-using System;
 using UnityEngine;
 using UnityEngine.Events;
-using UnityEngine.UI;
-
 
 namespace MetaDisplay
 {
     /// <summary>
-    /// Container flexbox dos óculos. No Canvas, mantém um Horizontal/VerticalLayoutGroup sincronizado
-    /// para o preview ficar parecido com o resultado nos óculos.
+    /// Glasses flexbox container. On the Canvas, keeps a Horizontal/VerticalLayoutGroup in sync
+    /// so the preview looks like the result on the glasses.
     /// </summary>
     [DisallowMultipleComponent]
-    [AddComponentMenu("Meta Display/Óculos - Container (FlexBox)")]
+    [AddComponentMenu("Meta Display/Glasses - Container (FlexBox)")]
     public class GlassesFlexBox : GlassesElement
     {
         [Header("Layout")]
         public GlassesDirection direction = GlassesDirection.Column;
         [Min(0)] public int gap = 12;
-        [Tooltip("Alinhamento no eixo principal (vertical em coluna, horizontal em linha).")]
+        [Tooltip("Main-axis alignment (vertical in a column, horizontal in a row).")]
         public GlassesAlignment alignment = GlassesAlignment.Start;
-        [Tooltip("Alinhamento no eixo cruzado.")]
+        [Tooltip("Cross-axis alignment.")]
         public GlassesAlignment crossAlignment = GlassesAlignment.Start;
         public bool wrap;
 
-        [Header("Espaçamento interno")]
+        [Header("Padding")]
         [Min(0)] public int padding = 0;
-        [Tooltip("Usa valores diferentes para cada lado.")]
+        [Tooltip("Uses a different value for each side.")]
         public bool perEdgePadding;
         [Min(0)] public int paddingTop, paddingBottom, paddingStart, paddingEnd;
 
-        [Header("Aparência")]
+        [Header("Appearance")]
         public GlassesBackground background = GlassesBackground.None;
 
-        [Header("Toque")]
-        [Tooltip("O container inteiro vira clicável nos óculos.")]
+        [Header("Tap")]
+        [Tooltip("The whole container becomes clickable on the glasses.")]
         public bool clickable;
         public GlassesScreen navigateTo;
         public UnityEvent onClick = new UnityEvent();
 
-        [Header("Preview no Canvas")]
-        [Tooltip("Mantém um LayoutGroup do Unity igual a este flexbox (só no Editor).")]
+        [Header("Canvas preview")]
+        [Tooltip("Keeps a Unity LayoutGroup matching this flexbox (Editor only).")]
         public bool syncCanvasLayout = true;
 
         internal void InvokeClick()

@@ -4,23 +4,23 @@ using UnityEngine;
 namespace MetaDisplay
 {
     /// <summary>
-    /// "Hey Meta, start {nome do app}" abre ou traz o app para frente (experimental).
-    /// O nome falado e a aprovação são configurados no Wearables Developer Center.
+    /// "Hey Meta, start {app name}" opens the app or brings it to the foreground (experimental).
+    /// The spoken name and the approval are configured in the Wearables Developer Center.
     /// </summary>
     public static class MetaVoiceInvocations
     {
         const string Cls = "MDVoice";
 
         public static VoiceInvocationState State { get; private set; } = VoiceInvocationState.Stopped;
-        /// <summary>Responde sucesso automaticamente a cada invocação (padrão: true).</summary>
+        /// <summary>Automatically answers success to every invocation (default: true).</summary>
         public static bool AutoAcknowledge = true;
-        /// <summary>O app foi aberto por um comando de voz.</summary>
+        /// <summary>The app was opened by a voice command.</summary>
         public static bool LaunchedByVoice { get; private set; }
 
         public static event Action<VoiceInvocationState> StateChanged;
-        /// <summary>Pedido "abrir app". Se AutoAcknowledge = false, chame <see cref="Respond"/> com o id.</summary>
+        /// <summary>"Open app" request. If AutoAcknowledge = false, call <see cref="Respond"/> with the id.</summary>
         public static event Action<int> LaunchAppRequested;
-        /// <summary>O app foi aberto/trazido para frente por voz (intent de voice invocation).</summary>
+        /// <summary>The app was opened/brought to the foreground by voice (voice invocation intent).</summary>
         public static event Action LaunchedFromVoiceIntent;
 
         public static void Start()
@@ -31,7 +31,7 @@ namespace MetaDisplay
 
         public static void Stop() => MetaNative.Call(Cls, "stop");
 
-        /// <summary>Toda invocação deve ser respondida exatamente uma vez.</summary>
+        /// <summary>Every invocation must be answered exactly once.</summary>
         public static void Respond(int requestId, bool success, string message = "") =>
             MetaNative.Call(Cls, "respond", requestId, success, message ?? "");
 
@@ -74,8 +74,8 @@ namespace MetaDisplay
     public enum ScreenCorner { TopRight, TopLeft, BottomRight, BottomLeft, Center }
 
     /// <summary>
-    /// Óculos simulados (MockDeviceKit) para testar no celular sem hardware. Inclui um preview do
-    /// display dos óculos desenhado por cima do Unity e injeção de inputs, fala e voz.
+    /// Simulated glasses (MockDeviceKit) to test on the phone without hardware. Includes a preview of the
+    /// glasses display drawn on top of Unity, plus input, speech and voice injection.
     /// </summary>
     public static class MetaMockDevice
     {
@@ -86,16 +86,16 @@ namespace MetaDisplay
         public static string TestServerUrl { get; private set; }
 
         public static event Action<string> Paired;
-        /// <summary>(url, comando adb forward)</summary>
+        /// <summary>(url, adb forward command)</summary>
         public static event Action<string, string> TestServerStarted;
 
-        /// <summary>Liga o ambiente simulado. Chame antes (ou logo depois) de MetaWearables.Initialize.</summary>
+        /// <summary>Turns the simulated environment on. Call it before (or right after) MetaWearables.Initialize.</summary>
         public static void Enable(bool initiallyRegistered = true, bool permissionsGranted = true) =>
             MetaNative.Call(Cls, "enable", initiallyRegistered, permissionsGranted);
 
         public static void Disable() => MetaNative.Call(Cls, "disable");
 
-        /// <summary>Cria óculos simulados (padrão: Meta Ray-Ban Display ligado e no rosto).</summary>
+        /// <summary>Creates simulated glasses (default: Meta Ray-Ban Display, powered on and worn).</summary>
         public static void PairGlasses(MockGlassesModel model = MockGlassesModel.MetaRaybanDisplay, bool powerOnAndDon = true) =>
             MetaNative.Call(Cls, "pairGlasses", MetaEnum.ToSdk(model), powerOnAndDon);
 
@@ -103,7 +103,7 @@ namespace MetaDisplay
 
         public static void Glasses(MockGlassesAction action) => MetaNative.Call(Cls, "glassesAction", MetaEnum.ToSdk(action));
 
-        /// <summary>battery -1 = não mudar.</summary>
+        /// <summary>battery -1 = do not change.</summary>
         public static void SetDeviceState(int battery = -1, ChargingState charging = ChargingState.Unknown, ThermalLevel thermal = ThermalLevel.Unknown) =>
             MetaNative.Call(Cls, "setDeviceState", battery, charging == ChargingState.Unknown ? "" : MetaEnum.ToSdk(charging),
                 thermal == ThermalLevel.Unknown ? "" : MetaEnum.ToSdk(thermal));
@@ -113,10 +113,10 @@ namespace MetaDisplay
         public static void SetPermission(MetaPermission permission, bool granted, bool asRequestResult = false) =>
             MetaNative.Call(Cls, "setPermission", MetaEnum.ToSdk(permission), granted ? "GRANTED" : "DENIED", asRequestResult);
 
-        /// <summary>Vídeo H.264/H.265 no aparelho (caminho absoluto) como feed da câmera simulada.</summary>
+        /// <summary>H.264/H.265 video on the device (absolute path) as the simulated camera feed.</summary>
         public static void SetCameraFeedFile(string absolutePath) => MetaNative.Call(Cls, "setCameraFeedFile", absolutePath);
 
-        /// <summary>Usa a câmera do celular como feed (o app precisa da permissão android.permission.CAMERA).</summary>
+        /// <summary>Uses the phone camera as the feed (the app needs the android.permission.CAMERA permission).</summary>
         public static void SetCameraFeedPhoneCamera(bool frontCamera = false) =>
             MetaNative.Call(Cls, "setCameraFeedPhoneCamera", frontCamera ? "FRONT" : "BACK");
 
@@ -132,13 +132,13 @@ namespace MetaDisplay
 
         public static void SimulateVoiceLaunch() => MetaNative.Call(Cls, "simulateVoiceLaunch");
 
-        /// <summary>Desenha o display simulado por cima do Unity (vista real do que os óculos mostrariam).</summary>
+        /// <summary>Draws the simulated display on top of Unity (a real view of what the glasses would show).</summary>
         public static void ShowDisplayPreview(int sizePx = 600, ScreenCorner corner = ScreenCorner.TopRight) =>
             MetaNative.Call(Cls, "showDisplayPreview", MetaNative.Activity, sizePx, MetaEnum.ToSdk(corner));
 
         public static void HideDisplayPreview() => MetaNative.Call(Cls, "hideDisplayPreview", MetaNative.Activity);
 
-        /// <summary>Preview no Chrome do PC: rode o comando adb do evento e abra a URL.</summary>
+        /// <summary>Preview in the PC's Chrome: run the adb command from the event and open the URL.</summary>
         public static void StartTestServer(int port = 9000) => MetaNative.Call(Cls, "startTestServer", port);
 
         public static void StopTestServer() => MetaNative.Call(Cls, "stopTestServer");
@@ -156,7 +156,7 @@ namespace MetaDisplay
                     break;
                 case "mock.testServer":
                     TestServerUrl = p.url;
-                    Debug.Log($"[MetaDisplay] Preview no PC: rode '{p.adb}' e abra {p.url}");
+                    Debug.Log($"[MetaDisplay] PC preview: run '{p.adb}' and open {p.url}");
                     TestServerStarted?.Invoke(p.url, p.adb);
                     break;
             }

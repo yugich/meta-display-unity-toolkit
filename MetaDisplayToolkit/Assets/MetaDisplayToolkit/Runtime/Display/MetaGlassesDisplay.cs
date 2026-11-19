@@ -6,9 +6,9 @@ using UnityEngine;
 namespace MetaDisplay
 {
     /// <summary>
-    /// Display do Meta Ray-Ban Display: envia telas, recebe cliques, mostra imagens e vídeos.
-    /// Lembre: cada envio substitui a tela inteira (600x600), o display dorme após ~25 s sem interação
-    /// e dois toques com dois dedos na haste encerram a sessão na tela raiz.
+    /// Meta Ray-Ban Display: sends screens, receives clicks, shows images and videos.
+    /// Remember: each send replaces the whole screen (600x600), the display sleeps after ~25 s without
+    /// interaction, and a two-finger tap on the temple ends the session on the root screen.
     /// </summary>
     public static class MetaGlassesDisplay
     {
@@ -18,20 +18,20 @@ namespace MetaDisplay
 
         public static DisplayState State { get; private set; } = DisplayState.Stopped;
         public static bool IsReady => State == DisplayState.Started;
-        /// <summary>O app pediu o Display (ele é anexado assim que a sessão começar).</summary>
+        /// <summary>The app requested the Display (it is attached as soon as the session starts).</summary>
         public static bool IsEnabled { get; private set; }
         public static VideoState Video { get; private set; } = VideoState.Idle;
-        /// <summary>JSON da última tela enviada (útil para depurar).</summary>
+        /// <summary>JSON of the last screen sent (useful for debugging).</summary>
         public static string LastLayoutJson { get; private set; }
 
         public static event Action<DisplayState> StateChanged;
         public static event Action<int> Sent;
         public static event Action<int, MetaError> SendFailed;
-        /// <summary>Id do elemento clicado (os callbacks do nó já são chamados automaticamente).</summary>
+        /// <summary>Id of the clicked element (node callbacks are already invoked automatically).</summary>
         public static event Action<string> Clicked;
         public static event Action<VideoState> VideoStateChanged;
 
-        /// <summary>Pede o Display. Pode ser chamado antes da sessão começar.</summary>
+        /// <summary>Requests the Display. Can be called before the session starts.</summary>
         public static void Enable()
         {
             IsEnabled = true;
@@ -44,7 +44,7 @@ namespace MetaDisplay
             MetaNative.Call("MDDisplay", "disable");
         }
 
-        /// <summary>Envia uma tela. Retorna o id do pedido (ver <see cref="Sent"/> e <see cref="SendFailed"/>).</summary>
+        /// <summary>Sends a screen. Returns the request id (see <see cref="Sent"/> and <see cref="SendFailed"/>).</summary>
         public static int Show(GlassesNode root)
         {
             if (root == null) throw new ArgumentNullException(nameof(root));
@@ -54,7 +54,7 @@ namespace MetaDisplay
             return ShowJson(json);
         }
 
-        /// <summary>Envia um layout já serializado (formato do GlassesNode).</summary>
+        /// <summary>Sends an already serialized layout (GlassesNode format).</summary>
         public static int ShowJson(string layoutJson)
         {
             LastLayoutJson = layoutJson;
@@ -63,7 +63,7 @@ namespace MetaDisplay
             return id;
         }
 
-        /// <summary>Reenvia a última tela (ex.: depois que o display acordou ou reconectou).</summary>
+        /// <summary>Re-sends the last screen (e.g. after the display woke up or reconnected).</summary>
         public static int Resend() => string.IsNullOrEmpty(LastLayoutJson) ? -1 : ShowJson(LastLayoutJson);
 
         public static void Clear()
@@ -72,9 +72,9 @@ namespace MetaDisplay
             MetaNative.Call("MDDisplay", "clear");
         }
 
-        // ───────────── vídeo ─────────────
+        // ───────────── video ─────────────
 
-        /// <summary>Toca um MP4 por URL HTTPS (até 400 px por lado e 70.000 px). O vídeo ocupa a tela inteira.</summary>
+        /// <summary>Plays an MP4 from an HTTPS URL (up to 400 px per side and 70,000 px). The video takes the whole screen.</summary>
         public static int PlayVideo(string httpsUrl)
         {
             int id = s_NextRequest++;
@@ -84,9 +84,9 @@ namespace MetaDisplay
 
         public static void StopVideo() => MetaNative.Call("MDDisplay", "stopVideo");
 
-        // ───────────── imagens ─────────────
+        // ───────────── images ─────────────
 
-        // Id estável por objeto, sem GetInstanceID (obsoleto no Unity 6.6) nem GetEntityId (inexistente no 6.0).
+        // Stable id per object, without GetInstanceID (obsolete in Unity 6.6) or GetEntityId (missing in 6.0).
         sealed class ObjectId { public string Value; }
         static readonly System.Runtime.CompilerServices.ConditionalWeakTable<UnityEngine.Object, ObjectId> s_Ids =
             new System.Runtime.CompilerServices.ConditionalWeakTable<UnityEngine.Object, ObjectId>();
@@ -101,12 +101,12 @@ namespace MetaDisplay
         public static string ImageKeyFor(Sprite sprite, int maxSize) =>
             sprite == null ? null : "spr_" + IdOf(sprite) + "_" + maxSize;
 
-        /// <summary>Registra (uma vez) uma textura e devolve a chave. RenderTextures são reenviadas sempre.</summary>
+        /// <summary>Registers a texture (once) and returns its key. RenderTextures are always re-sent.</summary>
         public static string RegisterImage(Texture texture, int maxSize = 600)
         {
             if (texture == null) return null;
-            // Texture2D é estática (envia uma vez); RenderTexture/WebCam/vídeo mudam e são reenviadas.
-            // (Não citar WebCamTexture aqui: o Unity adicionaria a permissão CAMERA do celular ao APK.)
+            // Texture2D is static (sent once); RenderTexture/WebCam/video change and are re-sent.
+            // (Do not reference WebCamTexture here: Unity would add the phone CAMERA permission to the APK.)
             bool dynamic = !(texture is Texture2D);
             string key = ImageKeyFor(texture, maxSize);
             if (!dynamic && s_UploadedImages.Contains(key)) return key;
@@ -127,7 +127,7 @@ namespace MetaDisplay
             return key;
         }
 
-        /// <summary>Registra bytes PNG/JPG sob uma chave (use em <see cref="ImageNode.ImageKey"/>).</summary>
+        /// <summary>Registers PNG/JPG bytes under a key (use it in <see cref="ImageNode.ImageKey"/>).</summary>
         public static void RegisterImage(string key, byte[] pngOrJpg, int maxSize = 600)
         {
             if (string.IsNullOrEmpty(key) || pngOrJpg == null) return;
@@ -147,7 +147,7 @@ namespace MetaDisplay
             MetaNative.Call("MDDisplay", "clearImages");
         }
 
-        // ───────────── eventos ─────────────
+        // ───────────── events ─────────────
 
         internal static void Handle(string type, MetaPayload p)
         {
@@ -163,7 +163,7 @@ namespace MetaDisplay
                 case "display.sendFailed":
                 {
                     var err = new MetaError("display", p.error, p.message);
-                    Debug.LogWarning($"[MetaDisplay] Envio {p.requestId} falhou: {err}");
+                    Debug.LogWarning($"[MetaDisplay] Send {p.requestId} failed: {err}");
                     SendFailed?.Invoke(p.requestId, err);
                     break;
                 }
@@ -188,16 +188,16 @@ namespace MetaDisplay
             }
         }
 
-        /// <summary>Simula um clique (Editor / testes).</summary>
+        /// <summary>Simulates a click (Editor / tests).</summary>
         public static void SimulateClick(string clickId) => Handle("display.click", new MetaPayload { id = clickId });
 
         internal static IEnumerable<string> ClickIds => s_Clicks.Keys;
     }
 
-    /// <summary>Converte texturas (mesmo as sem Read/Write) e sprites de atlas em PNG.</summary>
+    /// <summary>Converts textures (even without Read/Write) and atlas sprites to PNG.</summary>
     public static class GlassesTextureEncoder
     {
-        /// <param name="sourceRect">Área em pixels (para sprites de atlas) ou null para a textura toda.</param>
+        /// <param name="sourceRect">Area in pixels (for atlas sprites) or null for the whole texture.</param>
         public static byte[] Encode(Texture source, Rect? sourceRect, int maxSize)
         {
             if (source == null) return null;
@@ -226,7 +226,7 @@ namespace MetaDisplay
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"[MetaDisplay] Não foi possível converter '{source.name}' em PNG: {e.Message}");
+                Debug.LogWarning($"[MetaDisplay] Could not convert '{source.name}' to PNG: {e.Message}");
                 return null;
             }
             finally

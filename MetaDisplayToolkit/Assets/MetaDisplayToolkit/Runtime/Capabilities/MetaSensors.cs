@@ -4,8 +4,8 @@ using UnityEngine;
 namespace MetaDisplay
 {
     /// <summary>
-    /// IMU dos óculos e da Neural Band (experimental: canais dev/beta).
-    /// Amostras chegam em lote a cada frame do Unity pelo evento <see cref="SampleReceived"/>.
+    /// IMU of the glasses and the Neural Band (experimental: dev/beta channels).
+    /// Samples arrive in batches every Unity frame through the <see cref="SampleReceived"/> event.
     /// </summary>
     public static class MetaMotion
     {
@@ -14,9 +14,9 @@ namespace MetaDisplay
         static bool s_Active;
 
         public static MotionState State { get; private set; } = MotionState.Stopped;
-        /// <summary>Amostra mais recente dos óculos.</summary>
+        /// <summary>Latest sample from the glasses.</summary>
         public static MotionSample LatestGlasses { get; private set; }
-        /// <summary>Amostra mais recente da Neural Band.</summary>
+        /// <summary>Latest sample from the Neural Band.</summary>
         public static MotionSample LatestNeuralBand { get; private set; }
 
         public static event Action<MotionState> StateChanged;
@@ -86,8 +86,8 @@ namespace MetaDisplay
     }
 
     /// <summary>
-    /// Inputs semânticos dos óculos/Neural Band: navegação, seleção, voltar, botões, captura e arraste
-    /// (experimental). Útil para controlar o app inteiro pelos óculos.
+    /// Semantic inputs from the glasses/Neural Band: navigation, select, back, buttons, capture and drag
+    /// (experimental). Useful to control the whole app from the glasses.
     /// </summary>
     public static class MetaInputs
     {
@@ -97,8 +97,8 @@ namespace MetaDisplay
         public static event Action<InputsState> StateChanged;
         public static event Action<GlassesInputEvent> InputReceived;
 
-        /// <param name="consumeBack">True: o app recebe "Voltar" em vez do sistema.</param>
-        /// <param name="sources">Vazio = todas as fontes conhecidas.</param>
+        /// <param name="consumeBack">True: the app receives "Back" instead of the system.</param>
+        /// <param name="sources">Empty = every known source.</param>
         public static void Start(bool consumeBack = true, params InputSource[] sources)
         {
             MetaDispatcher.EnsureExists();
@@ -138,8 +138,8 @@ namespace MetaDisplay
     }
 
     /// <summary>
-    /// Reconhecimento de fala nos próprios óculos com transcrição parcial e final (experimental).
-    /// Pede a permissão de microfone no Meta AI automaticamente.
+    /// Speech recognition on the glasses themselves with partial and final transcriptions (experimental).
+    /// Requests the microphone permission in Meta AI automatically.
     /// </summary>
     public static class MetaSpeech
     {
@@ -147,12 +147,12 @@ namespace MetaDisplay
 
         public static SpeechState State { get; private set; } = SpeechState.Stopped;
         public static string Locale { get; private set; }
-        /// <summary>Última transcrição (parcial ou final).</summary>
+        /// <summary>Latest transcription (partial or final).</summary>
         public static SpeechResult Latest { get; private set; }
 
         public static event Action<SpeechState> StateChanged;
         public static event Action<SpeechResult> TranscriptionReceived;
-        /// <summary>Só os resultados finais (frase completa).</summary>
+        /// <summary>Only the final results (complete sentence).</summary>
         public static event Action<string> FinalTranscription;
 
         public static void Start()

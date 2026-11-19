@@ -1,22 +1,18 @@
 #if METADISPLAY_UGUI
-using System;
 using UnityEngine;
-using UnityEngine.Events;
-using UnityEngine.UI;
-
 
 namespace MetaDisplay
 {
-    /// <summary>Imagem nos óculos: URL HTTPS, textura/sprite do Unity ou a imagem do componente Image/RawImage.</summary>
+    /// <summary>Image on the glasses: HTTPS URL, Unity texture/sprite or the image of the Image/RawImage component.</summary>
     [DisallowMultipleComponent]
-    [AddComponentMenu("Meta Display/Óculos - Imagem")]
+    [AddComponentMenu("Meta Display/Glasses - Image")]
     public class GlassesImage : GlassesElement
     {
         public enum ImageSource
         {
-            [InspectorName("Automático (Image/RawImage deste objeto)")] Auto,
-            [InspectorName("Textura")] Texture,
-            [InspectorName("URL HTTPS")] Url,
+            [InspectorName("Automatic (Image/RawImage on this object)")] Auto,
+            [InspectorName("Texture")] Texture,
+            [InspectorName("HTTPS URL")] Url,
         }
 
         public ImageSource source = ImageSource.Auto;
@@ -24,7 +20,7 @@ namespace MetaDisplay
         public string url;
         public GlassesImageSize size = GlassesImageSize.Fill;
         public GlassesCornerRadius cornerRadius = GlassesCornerRadius.Medium;
-        [Tooltip("Maior lado ao enviar (o display tem 600x600). 0 = automático.")]
+        [Tooltip("Largest side when sending (the display is 600x600). 0 = automatic.")]
         [Min(0)] public int maxSize;
     }
 }

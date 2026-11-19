@@ -1,15 +1,11 @@
 #if METADISPLAY_UGUI
-using System;
 using UnityEngine;
-using UnityEngine.Events;
-using UnityEngine.UI;
-
 
 namespace MetaDisplay
 {
-    /// <summary>Um dos 116 ícones nativos dos óculos.</summary>
+    /// <summary>One of the 116 native glasses icons.</summary>
     [DisallowMultipleComponent]
-    [AddComponentMenu("Meta Display/Óculos - Ícone")]
+    [AddComponentMenu("Meta Display/Glasses - Icon")]
     public class GlassesIcon : GlassesElement
     {
         public GlassesIconName icon = GlassesIconName.Star;

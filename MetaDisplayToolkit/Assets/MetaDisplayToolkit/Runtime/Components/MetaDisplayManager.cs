@@ -5,8 +5,8 @@ using UnityEngine.Events;
 namespace MetaDisplay
 {
     /// <summary>
-    /// Coloque um na cena e configure tudo pelo Inspector: conexão, telas dos óculos, o que aparece
-    /// no celular, capacidades (câmera, IMU, inputs, fala, voz), simulação e eventos.
+    /// Put one in the scene and configure everything in the Inspector: connection, glasses screens, what
+    /// appears on the phone, capabilities (camera, IMU, inputs, speech, voice), simulation and events.
     /// </summary>
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(-500)]
@@ -15,27 +15,27 @@ namespace MetaDisplay
     {
         [Serializable] public class StringEvent : UnityEvent<string> { }
 
-        // ── Conexão ──
-        [Tooltip("Inicializa o SDK ao abrir a cena (pede a permissão de Bluetooth no Android 12+).")]
+        // ── Connection ──
+        [Tooltip("Initializes the SDK when the scene opens (requests the Bluetooth permission on Android 12+).")]
         public bool initializeOnStart = true;
-        [Tooltip("Abre o Meta AI para registrar o app automaticamente se ainda não estiver registrado.\nRecomendado: deixar desligado e usar um botão (o painel de debug tem um).")]
+        [Tooltip("Opens Meta AI to register the app automatically if it is not registered yet.\nRecommended: leave it off and use a button (the debug panel has one).")]
         public bool registerAutomatically;
-        [Tooltip("Conecta aos óculos assim que o app estiver registrado.")]
+        [Tooltip("Connects to the glasses as soon as the app is registered.")]
         public bool connectWhenRegistered = true;
         public DeviceSelection deviceSelection = DeviceSelection.DisplayCapable;
         public string specificDeviceId = "";
 
-        // ── Óculos ──
-        [Tooltip("Anexa o Display dos óculos ao conectar.")]
+        // ── Glasses ──
+        [Tooltip("Attaches the glasses Display when connecting.")]
         public bool enableDisplay = true;
 #if METADISPLAY_UGUI
-        [Tooltip("Tela enviada aos óculos quando o display fica pronto.")]
+        [Tooltip("Screen sent to the glasses when the display is ready.")]
         public GlassesScreen initialScreen;
-        [Tooltip("Ao reconectar, reenvia a tela que estava aberta (em vez de voltar para a inicial).")]
+        [Tooltip("When reconnecting, re-sends the screen that was open (instead of going back to the initial one).")]
         public bool restoreCurrentScreen = true;
 #endif
 
-        // ── Capacidades ──
+        // ── Capabilities ──
         public bool startCamera;
         public CameraQuality cameraQuality = CameraQuality.Medium;
         public CameraFps cameraFps = CameraFps.Fps24;
@@ -43,25 +43,25 @@ namespace MetaDisplay
         public bool startMotion;
         public MotionRate motionRate = MotionRate.Hz30;
         public bool startInputs;
-        [Tooltip("O app recebe o gesto Voltar em vez do sistema.")]
+        [Tooltip("The app receives the Back gesture instead of the system.")]
         public bool inputsConsumeBack = true;
         public bool startSpeech;
         public bool startVoiceInvocations;
 
-        // ── Celular ──
-        [Tooltip("Painel na tela do celular com status e botões (registrar, conectar, telas, câmera, sensores...).")]
+        // ── Phone ──
+        [Tooltip("Panel on the phone screen with status and buttons (register, connect, screens, camera, sensors...).")]
         public bool showPhoneDebugPanel = true;
 
-        // ── Testes ──
-        [Tooltip("No Editor (Play Mode), simula óculos conectados para testar o fluxo e as telas.")]
+        // ── Testing ──
+        [Tooltip("In the Editor (Play Mode), simulates connected glasses to test the flow and the screens.")]
         public bool simulateInEditor = true;
-        [Tooltip("No celular, usa óculos SIMULADOS (MockDeviceKit) em vez dos reais.")]
+        [Tooltip("On the phone, uses SIMULATED glasses (MockDeviceKit) instead of the real ones.")]
         public bool useMockDevice;
         public bool mockShowDisplayPreview = true;
         public int mockPreviewSize = 480;
         public ScreenCorner mockPreviewCorner = ScreenCorner.TopRight;
 
-        // ── Eventos ──
+        // ── Events ──
         public UnityEvent onInitialized = new UnityEvent();
         public UnityEvent onRegistered = new UnityEvent();
         public UnityEvent onConnected = new UnityEvent();
@@ -77,7 +77,7 @@ namespace MetaDisplay
         {
             if (Instance != null && Instance != this)
             {
-                Debug.LogWarning("[MetaDisplay] Já existe um MetaDisplayManager na cena; este será ignorado.", this);
+                Debug.LogWarning("[MetaDisplay] There is already a MetaDisplayManager in the scene; this one will be ignored.", this);
                 enabled = false;
                 return;
             }
@@ -112,7 +112,7 @@ namespace MetaDisplay
             if (initializeOnStart) MetaWearables.Initialize();
         }
 
-        /// <summary>Conecta aos óculos e pede as capacidades marcadas no Inspector.</summary>
+        /// <summary>Connects to the glasses and requests the capabilities checked in the Inspector.</summary>
         public void Connect()
         {
             m_ConnectRequested = true;

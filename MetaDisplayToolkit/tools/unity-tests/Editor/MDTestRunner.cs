@@ -6,7 +6,7 @@ using UnityEditor;
 using UnityEditor.Build;
 using UnityEngine;
 
-// Script de teste (fica só no projeto de teste, não vai no pacote).
+// Test script (lives only in the test project, it is not part of the package).
 public static class MDTestRunner
 {
     public static void Demo()
@@ -18,10 +18,10 @@ public static class MDTestRunner
             foreach (var w in GlassesCanvasConverter.Validate(s)) Debug.Log("MDTEST warn '" + s.name + "': " + w);
         }
         var node = Glasses.Column(12, 24).Add(
-            Glasses.Heading("Oi \"aspas\"\nlinha"),
+            Glasses.Heading("Hi \"quotes\"\nline"),
             Glasses.Button("OK", () => { }, icon: GlassesIconName.Checkmark, primary: true),
             Glasses.ButtonGroup(Glasses.Button("A"), Glasses.Button("B", () => { }, GlassesButtonStyle.Outline)),
-            Glasses.Row(8).Add(Glasses.Icon(GlassesIconName.Circle8RaysLarge, GlassesIconStyle.Outline), Glasses.Spacer(), Glasses.Meta("fim")),
+            Glasses.Row(8).Add(Glasses.Icon(GlassesIconName.Circle8RaysLarge, GlassesIconStyle.Outline), Glasses.Spacer(), Glasses.Meta("end")),
             Glasses.ImageUrl("https://example.com/a.png", GlassesImageSize.Icon));
         MetaGlassesDisplay.Show(node);
         Debug.Log("MDTEST code JSON=" + MetaGlassesDisplay.LastLayoutJson);
@@ -29,15 +29,17 @@ public static class MDTestRunner
 
     public static void BuildApk()
     {
+        PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, "com.metadisplay.demo");
+        PlayerSettings.productName = "Meta Display Demo";
+        PlayerSettings.companyName = "MetaDisplayToolkit";
         var settings = MetaDisplaySettings.Load();
-        Debug.Log("MDTEST esquema: " + settings.EffectiveScheme);
-        PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, "com.estudos.metadisplaytest");
+        Debug.Log("MDTEST scheme: " + settings.EffectiveScheme);
         PlayerSettings.Android.minSdkVersion = (AndroidSdkVersions)31;
         PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
         PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
         PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
         PlayerSettings.Android.forceInternetPermission = true;
-        var output = Path.GetFullPath("../build/MetaDisplayTest.apk");
+        var output = Path.GetFullPath("../build/MetaDisplayDemo.apk");
         Directory.CreateDirectory(Path.GetDirectoryName(output));
         var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
         {
@@ -46,17 +48,18 @@ public static class MDTestRunner
             target = BuildTarget.Android,
             options = BuildOptions.None,
         });
-        Debug.Log("MDTEST build: " + report.summary.result + " erros=" + report.summary.totalErrors + " tamanho=" + report.summary.totalSize + " -> " + output);
+        Debug.Log("MDTEST build: " + report.summary.result + " errors=" + report.summary.totalErrors + " size=" + report.summary.totalSize + " -> " + output);
         EditorApplication.Exit(report.summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded ? 0 : 1);
     }
 
-    /// <summary>Exporta Assets/MetaDisplayToolkit para o caminho em MD_EXPORT_PATH.</summary>
+    /// <summary>Exports Assets/MetaDisplayToolkit to the path in MD_EXPORT_PATH.</summary>
     public static void Export()
     {
         AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
         var output = Environment.GetEnvironmentVariable("MD_EXPORT_PATH");
 #pragma warning disable CS0618
         AssetDatabase.ExportPackage("Assets/MetaDisplayToolkit", output, ExportPackageOptions.Recurse);
-        Debug.Log("MDTEST exportado: " + output + " (" + new FileInfo(output).Length + " bytes)");
+#pragma warning restore CS0618
+        Debug.Log("MDTEST exported: " + output + " (" + new FileInfo(output).Length + " bytes)");
     }
 }

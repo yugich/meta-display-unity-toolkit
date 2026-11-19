@@ -1,22 +1,22 @@
-# Scripts de validação
+# Validation scripts
 
-Usados para testar o pacote num **projeto Unity separado** (não coloque dentro de `Assets/MetaDisplayToolkit`).
+Used to test the package in a **separate Unity project** (do not put them inside `Assets/MetaDisplayToolkit`).
 
-1. Crie um projeto Unity 6, adicione `com.unity.ugui` e copie `Assets/MetaDisplayToolkit` para ele.
-2. Copie `Editor/` e `Tests/` desta pasta para o `Assets/` do projeto de teste.
-3. Rode em batchmode (`$U` = caminho do `Unity.exe`):
+1. Create a Unity 6 project, add `com.unity.ugui` and copy `Assets/MetaDisplayToolkit` into it.
+2. Copy `Editor/` and `Tests/` from this folder into the test project's `Assets/`.
+3. Run in batchmode (`$U` = path to `Unity.exe`):
 
 ```powershell
-# Cena de exemplo + JSON de cada tela no log
+# Sample scene + JSON of each screen in the log
 & $U -batchmode -projectPath <proj> -buildTarget Android -executeMethod MDTestRunner.Demo -quit -logFile demo.log
 
-# Teste PlayMode do fluxo completo (simulação no Editor)
+# PlayMode test of the full flow (Editor simulation)
 & $U -batchmode -projectPath <proj> -buildTarget Android -runTests -testPlatform PlayMode -testResults results.xml -logFile test.log
 
-# APK IL2CPP/ARM64 da cena de exemplo (saída em ../build/MetaDisplayTest.apk)
+# IL2CPP/ARM64 APK of the sample scene (output in ../build/MetaDisplayDemo.apk)
 & $U -batchmode -projectPath <proj> -buildTarget Android -executeMethod MDTestRunner.BuildApk -logFile build.log
 
 # .unitypackage
-$env:MD_EXPORT_PATH = "C:\caminho\MetaDisplayToolkit.unitypackage"
+$env:MD_EXPORT_PATH = "C:\path\MetaDisplayToolkit.unitypackage"
 & $U -batchmode -projectPath <proj> -buildTarget Android -executeMethod MDTestRunner.Export -quit -logFile export.log
 ```

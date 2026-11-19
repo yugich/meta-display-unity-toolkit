@@ -1,31 +1,29 @@
 #if METADISPLAY_UGUI
-using System;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 
-
 namespace MetaDisplay
 {
     /// <summary>
-    /// Botão nos óculos. Funciona com (ou sem) um UnityEngine.UI.Button no mesmo objeto:
-    /// o clique nos óculos dispara o OnClick do Button, o <see cref="onClick"/> e a navegação.
+    /// Button on the glasses. Works with (or without) a UnityEngine.UI.Button on the same object:
+    /// a tap on the glasses fires the Button's OnClick, <see cref="onClick"/> and the navigation.
     /// </summary>
     [DisallowMultipleComponent]
-    [AddComponentMenu("Meta Display/Óculos - Botão")]
+    [AddComponentMenu("Meta Display/Glasses - Button")]
     public class GlassesButton : GlassesElement
     {
-        [Tooltip("Vazio = usa o primeiro texto filho.")]
+        [Tooltip("Empty = uses the first child text.")]
         public string label;
         public GlassesButtonStyle style = GlassesButtonStyle.Primary;
         public bool showIcon;
         public GlassesIconName icon = GlassesIconName.Checkmark;
-        [Tooltip("Ação principal: recebe o foco quando a tela aparece.")]
+        [Tooltip("Primary action: gets the focus when the screen appears.")]
         public bool primary;
-        [Tooltip("Tela dos óculos a mostrar ao tocar (navegação sem código).")]
+        [Tooltip("Glasses screen to show when tapped (no-code navigation).")]
         public GlassesScreen navigateTo;
         public UnityEvent onClick = new UnityEvent();
-        [Tooltip("Ajusta as cores do botão no Canvas para parecer com os óculos (só no Editor).")]
+        [Tooltip("Adjusts the button colors on the Canvas to look like the glasses (Editor only).")]
         public bool previewStyle = true;
 
         Button m_UiButton;
@@ -47,11 +45,11 @@ namespace MetaDisplay
             if (navigateTo != null) navigateTo.Show();
         }
 
-        /// <summary>Executa o clique (é o que acontece quando o usuário toca no botão nos óculos).</summary>
+        /// <summary>Runs the click (this is what happens when the user taps the button on the glasses).</summary>
         public void Click()
         {
             Hook();
-            if (m_UiButton != null) m_UiButton.onClick.Invoke(); // inclui HandleClick
+            if (m_UiButton != null) m_UiButton.onClick.Invoke(); // includes HandleClick
             else HandleClick();
         }
 
