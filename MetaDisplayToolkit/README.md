@@ -56,10 +56,11 @@ the quality.
 | PlayMode test (simulation): registration → session → display → navigation → counter → speech → disconnect | ✅ |
 | IL2CPP/ARM64 APK build (Unity 6.6, AGP 9.1.1): Maven Central dependencies, manifest, duplicate `libc++_shared` resolved | ✅ 38 MB |
 | On real glasses (Samsung SM-S948B): registration, display, clicks, navigation, video, HQ photo | ✅ |
-| Camera stop → start cycle hardening (queue, stop confirmation, retry, watchdog) | ⏳ not retested on the glasses yet |
+| Camera streaming on real glasses, including the stop → start cycle hardening (queue, stop confirmation, retry, watchdog) | ✅ |
 | 3D: avatar scene in simulation on Unity 6.6 (live frames, glasses button, swipe → rotation, speech → reply, SDK bitmap, baked frames, one-shot → idle, video, Web App without relay, simulated 40 KB/s link ≈ 4 fps) | ✅ PlayMode test |
 | 3D: package compiles on Unity 6000.3.19f1 | ✅ no errors or warnings |
 | 3D: MP4 recorder (264×264 H.264, moov before mdat) | ✅ |
 | 3D: `GlassesWebAppLink` ↔ relay ↔ Web App messages (play, say, rotate, look, hello, action) | ✅ PlayMode test + Node relay |
 | 3D: exported Web App rendered in headless Chrome (robot, caption and commands from the relay) | ✅ |
-| 3D on real glasses: frame rate over Bluetooth, video clips, Web App | ⏳ not tested on the glasses yet |
+| 3D live frames (Unity render → JPEG) on real glasses | ✅ works, at a low frame rate |
+| 3D on real glasses: baked frames, video clips, Web App | ⏳ not tested on the glasses yet |

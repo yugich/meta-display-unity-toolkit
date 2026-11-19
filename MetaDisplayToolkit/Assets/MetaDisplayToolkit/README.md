@@ -114,6 +114,9 @@ a 3D object there. Pick the **Strategy** on the `Glasses3DView`, or switch it at
 | **Video clips** | Each action is an MP4 played by the glasses' video player | Actions | Smooth | HTTPS hosting |
 | **Web App** | Three.js renders the object **on the glasses**; Unity sends commands through a relay | Fully | Smooth, real time | HTTPS hosting; relay and GLB optional |
 
+**Tested on real glasses:** live frames work, at a low frame rate. Baked frames, video clips and the Web App have not
+been tested on hardware yet.
+
 Every strategy accepts the same calls, so you can change strategy without changing your code:
 
 ```csharp
