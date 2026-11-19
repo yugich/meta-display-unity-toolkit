@@ -1,0 +1,20 @@
+# Binários publicados na Release do GitHub (não versionar)
+*.apk
+*.aab
+*.unitypackage
+MetaDisplayToolkit/Demo/
+
+# Android / Gradle
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.cxx/
+.kotlin/
+
+# Sistema / editores
+.DS_Store
+Thumbs.db
+.vscode/
+*.swp

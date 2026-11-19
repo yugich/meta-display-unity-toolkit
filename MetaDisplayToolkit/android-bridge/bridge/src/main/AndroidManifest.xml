@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application>
+        <!-- Activity invisível que pede permissões do DAT (câmera/microfone) via app Meta AI.
+             Funciona com qualquer Application Entry Point do Unity (Activity ou GameActivity). -->
+        <activity
+            android:name="com.estudos.metadisplay.PermissionRequestActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+    </application>
+</manifest>

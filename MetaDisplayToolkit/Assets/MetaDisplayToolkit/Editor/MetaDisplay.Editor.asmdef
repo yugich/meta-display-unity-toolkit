@@ -1,0 +1,26 @@
+{
+    "name": "MetaDisplay.Editor",
+    "rootNamespace": "MetaDisplay.Editor",
+    "references": [
+        "MetaDisplay.Runtime",
+        "UnityEngine.UI",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.ugui",
+            "expression": "2.0.0",
+            "define": "METADISPLAY_UGUI"
+        }
+    ],
+    "noEngineReferences": false
+}

@@ -1,0 +1,4 @@
+<!-- Impede o IL2CPP de remover o listener chamado por reflexão a partir do Java. -->
+<linker>
+    <assembly fullname="MetaDisplay.Runtime" preserve="all" />
+</linker>

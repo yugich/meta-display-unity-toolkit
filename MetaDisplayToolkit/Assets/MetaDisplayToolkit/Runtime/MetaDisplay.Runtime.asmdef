@@ -1,0 +1,23 @@
+{
+    "name": "MetaDisplay.Runtime",
+    "rootNamespace": "MetaDisplay",
+    "references": [
+        "UnityEngine.UI",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.ugui",
+            "expression": "2.0.0",
+            "define": "METADISPLAY_UGUI"
+        }
+    ],
+    "noEngineReferences": false
+}
